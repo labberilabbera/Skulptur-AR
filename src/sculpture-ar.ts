@@ -2,9 +2,9 @@ import * as ecs from '@8thwall/ecs'
 import {fireVertexShader, fireFragmentShader} from './fire-shader'
 import {particleVertexShader, particleFragmentShader} from './particle-shader'
 
-// ── Maps för att hålla referenser per entity ─────────────────────────────────
 const fireMatsMap     = new Map<bigint, any[]>()
-const emberMatsMap    = new Map<bigint, any[]>()
+const p1MatsMap       = new Map<bigint, any[]>()
+const p2MatsMap       = new Map<bigint, any[]>()
 const gltfListenerMap = new Map<bigint, (e: any) => void>()
 const setupDoneMap    = new Map<bigint, boolean>()
 
@@ -13,45 +13,35 @@ let THREE: any = null
 ecs.registerComponent({
   name: 'sculpture-fire',
 
-  /**
-   * ── Justera elden här ──────────────────────────────────────────────────
-   * intensity      — huvudregler för synlighet (0-2)
-   * speed          — animationshastighet, lägre = mer harmonisk (0.3-2)
-   * audioReact     — hur mycket musiken påverkar (0-3)
-   * flameHeight    — hur långt elden flödar uppåt (0.5-3)
-   * noiseScale     — täthet på noise-strukturen, högre = mindre detaljer (1-6)
-   * glowStrength   — styrka på kant-/aura-glöd (0-2)
-   * surfaceOffset  — hur långt ut från ytan eldlagret ligger (0.005-0.05)
-   * emberCount     — andel ember-partiklar aktiva (0-1)
-   * emberSize      — storlek på ember-partiklar i pixlar (2-20)
-   * emberSpeed     — hastighet för embers (0.3-2)
-   * emberRise      — höjd embers stiger (0.1-1)
-   */
   schema: {
-    intensity:     ecs.f32,
-    speed:         ecs.f32,
-    audioReact:    ecs.f32,
-    flameHeight:   ecs.f32,
-    noiseScale:    ecs.f32,
-    glowStrength:  ecs.f32,
-    surfaceOffset: ecs.f32,
-    emberCount:    ecs.f32,
-    emberSize:     ecs.f32,
-    emberSpeed:    ecs.f32,
-    emberRise:     ecs.f32,
+    density:    ecs.f32,
+    speed:      ecs.f32,
+    audioReact: ecs.f32,
+
+    p1Count:    ecs.f32,
+    p1Size:     ecs.f32,
+    p1Speed:    ecs.f32,
+    p1Rise:     ecs.f32,
+
+    p2Count:    ecs.f32,
+    p2Size:     ecs.f32,
+    p2Speed:    ecs.f32,
+    p2Rise:     ecs.f32,
   },
   schemaDefaults: {
-    intensity:     0.9,
-    speed:         0.7,
-    audioReact:    1.2,
-    flameHeight:   1.3,
-    noiseScale:    2.8,
-    glowStrength:  0.8,
-    surfaceOffset: 0.015,
-    emberCount:    0.35,
-    emberSize:     6.0,
-    emberSpeed:    0.8,
-    emberRise:     0.35,
+    density:    0.85,
+    speed:      1.0,
+    audioReact: 1.5,
+
+    p1Count:    0.8,
+    p1Size:     14.0,
+    p1Speed:    1.0,
+    p1Rise:     0.3,
+
+    p2Count:    0.5,
+    p2Size:     6.0,
+    p2Speed:    1.6,
+    p2Rise:     0.55,
   },
   data: {},
 
@@ -60,10 +50,9 @@ ecs.registerComponent({
     if (!THREE) { console.error('[sculpture-fire] THREE saknas'); return }
     setupDoneMap.set(component.eid, false)
 
-    // Skapar ember-partikel-geometri från meshens vertices
-    const makeEmberGeo = (pa: any, maxCount: number) => {
+    const makeParticleGeo = (pa: any, maxP: number) => {
       const total = pa.count
-      const step  = Math.max(1, Math.floor(total / maxCount))
+      const step  = Math.max(1, Math.floor(total / maxP))
       const cnt   = Math.floor(total / step)
       const pos   = new Float32Array(cnt * 3)
       const off   = new Float32Array(cnt)
@@ -89,76 +78,81 @@ ecs.registerComponent({
       setupDoneMap.set(component.eid, true)
 
       const s = component.schema
-      const fireMats:  any[] = []
-      const emberMats: any[] = []
+      const fireMats: any[] = []
+      const p1Mats:   any[] = []
+      const p2Mats:   any[] = []
 
       model.traverse((child: any) => {
         if (!child.isMesh) return
 
-        // ── Eldlager: duplicerad mesh med offset längs normal ──────────────
-        // Lagret hugs ytan istället för att kapsla in skulpturen
+        // ── Surface fire ──────────────────────────────────────────────────────
         const fireMat = new THREE.ShaderMaterial({
-          vertexShader:   fireVertexShader,
-          fragmentShader: fireFragmentShader,
-          uniforms: {
-            time:           {value: 0},
-            uIntensity:     {value: s.intensity},
-            uNoiseScale:    {value: s.noiseScale},
-            uGlowStrength:  {value: s.glowStrength},
-            uFlameHeight:   {value: s.flameHeight},
-            uSurfaceOffset: {value: s.surfaceOffset},
-          },
-          transparent: true,
-          blending:    THREE.AdditiveBlending,
-          depthWrite:  false,
-          depthTest:   true,   // depth-test PÅ så elden döljs av andra delar av kroppen
-          side:        THREE.FrontSide,
+          vertexShader: fireVertexShader, fragmentShader: fireFragmentShader,
+          uniforms:     {time: {value: 0}, density: {value: s.density}},
+          transparent: true, blending: THREE.AdditiveBlending,
+          depthWrite: false, depthTest: false, side: THREE.DoubleSide,
         })
-
         const fireMesh = child.clone()
-        fireMesh.material    = fireMat
+        fireMesh.material = fireMat
+        fireMesh.scale.multiplyScalar(1.02)
         fireMesh.renderOrder = 998
         child.parent.add(fireMesh)
         world.three.notifyChanged(fireMesh)
         fireMats.push(fireMat)
 
-        // ── Ember-partiklar som accent (max 100 enligt spec) ────────────────
         const pa = child.geometry?.attributes?.position
         if (!pa) return
 
-        const emberGeo = makeEmberGeo(pa, 100)
-        const emberMat = new THREE.ShaderMaterial({
-          vertexShader:   particleVertexShader,
-          fragmentShader: particleFragmentShader,
+        // ── Particle layer 1 ──────────────────────────────────────────────────
+        const geo1  = makeParticleGeo(pa, 200)
+        const pMat1 = new THREE.ShaderMaterial({
+          vertexShader: particleVertexShader, fragmentShader: particleFragmentShader,
           uniforms: {
             time:     {value: 0},
-            uSize:    {value: s.emberSize},
-            uSpeed:   {value: s.emberSpeed},
-            uRise:    {value: s.emberRise},
-            uMaxFrac: {value: s.emberCount},
+            uSize:    {value: s.p1Size},
+            uSpeed:   {value: s.p1Speed},
+            uRise:    {value: s.p1Rise},
+            uMaxFrac: {value: s.p1Count},
           },
-          transparent: true,
-          blending:    THREE.AdditiveBlending,
-          depthWrite:  false,
-          depthTest:   false,
+          transparent: true, blending: THREE.AdditiveBlending,
+          depthWrite: false, depthTest: false,
         })
-        const embers = new THREE.Points(emberGeo, emberMat)
-        embers.renderOrder = 999
-        child.parent.add(embers)
-        world.three.notifyChanged(embers)
-        emberMats.push(emberMat)
+        const pts1 = new THREE.Points(geo1, pMat1)
+        pts1.renderOrder = 999
+        child.parent.add(pts1)
+        world.three.notifyChanged(pts1)
+        p1Mats.push(pMat1)
+
+        // ── Particle layer 2 ──────────────────────────────────────────────────
+        const geo2  = makeParticleGeo(pa, 150)
+        const pMat2 = new THREE.ShaderMaterial({
+          vertexShader: particleVertexShader, fragmentShader: particleFragmentShader,
+          uniforms: {
+            time:     {value: 0},
+            uSize:    {value: s.p2Size},
+            uSpeed:   {value: s.p2Speed},
+            uRise:    {value: s.p2Rise},
+            uMaxFrac: {value: s.p2Count},
+          },
+          transparent: true, blending: THREE.AdditiveBlending,
+          depthWrite: false, depthTest: false,
+        })
+        const pts2 = new THREE.Points(geo2, pMat2)
+        pts2.renderOrder = 999
+        child.parent.add(pts2)
+        world.three.notifyChanged(pts2)
+        p2Mats.push(pMat2)
       })
 
       fireMatsMap.set(component.eid, fireMats)
-      emberMatsMap.set(component.eid, emberMats)
-      console.log('[sculpture-fire] klar — eldytor:', fireMats.length, 'embers:', emberMats.length)
+      p1MatsMap.set(component.eid, p1Mats)
+      p2MatsMap.set(component.eid, p2Mats)
+      console.log('[sculpture-fire] klar — ytor:', fireMats.length)
     }
 
     const onLoaded = (e: any) => applyFire(e.data.model)
     gltfListenerMap.set(component.eid, onLoaded)
     world.events.addListener(component.eid, ecs.events.GLTF_MODEL_LOADED, onLoaded)
-
-    // Race-skydd: om GLB redan laddats innan komponenten kopplats
     const obj = world.three.entityToObject.get(component.eid)
     if (obj && obj.children.length > 0) applyFire(obj)
   },
@@ -168,36 +162,40 @@ ecs.registerComponent({
     const s  = component.schema
     const ad = (window as any).audioData
 
-    // Audioreaktivitet — bas pumpar intensitet, mid driver hastighet
     const react = s.audioReact
     const bass  = ad?.active ? ad.bass : 0
     const mid   = ad?.active ? ad.mid  : 0
 
-    const effIntensity = s.intensity * (1.0 + bass * react * 1.8)
-    const effSpeed     = s.speed     * (1.0 + mid  * react * 1.0)
+    const effectiveDensity = s.density * (1.0 + bass * react * 2.0)
+    const effectiveSpeed   = s.speed   * (1.0 + mid  * react * 1.2)
 
-    // Uppdatera alla eldmaterial varje tick
     const fireMats = fireMatsMap.get(component.eid)
     if (fireMats) {
       for (const mat of fireMats) {
-        mat.uniforms.time.value           = t * effSpeed
-        mat.uniforms.uIntensity.value     = effIntensity
-        mat.uniforms.uNoiseScale.value    = s.noiseScale
-        mat.uniforms.uGlowStrength.value  = s.glowStrength
-        mat.uniforms.uFlameHeight.value   = s.flameHeight
-        mat.uniforms.uSurfaceOffset.value = s.surfaceOffset
+        mat.uniforms.time.value    = t * effectiveSpeed
+        mat.uniforms.density.value = effectiveDensity
       }
     }
 
-    // Uppdatera embers
-    const emberMats = emberMatsMap.get(component.eid)
-    if (emberMats) {
-      for (const mat of emberMats) {
+    const p1Mats = p1MatsMap.get(component.eid)
+    if (p1Mats) {
+      for (const mat of p1Mats) {
         mat.uniforms.time.value     = t
-        mat.uniforms.uSize.value    = s.emberSize
-        mat.uniforms.uSpeed.value   = s.emberSpeed * effSpeed
-        mat.uniforms.uRise.value    = s.emberRise
-        mat.uniforms.uMaxFrac.value = s.emberCount
+        mat.uniforms.uSize.value    = s.p1Size
+        mat.uniforms.uSpeed.value   = s.p1Speed * effectiveSpeed
+        mat.uniforms.uRise.value    = s.p1Rise
+        mat.uniforms.uMaxFrac.value = s.p1Count
+      }
+    }
+
+    const p2Mats = p2MatsMap.get(component.eid)
+    if (p2Mats) {
+      for (const mat of p2Mats) {
+        mat.uniforms.time.value     = t
+        mat.uniforms.uSize.value    = s.p2Size
+        mat.uniforms.uSpeed.value   = s.p2Speed * effectiveSpeed
+        mat.uniforms.uRise.value    = s.p2Rise
+        mat.uniforms.uMaxFrac.value = s.p2Count
       }
     }
   },
@@ -209,7 +207,8 @@ ecs.registerComponent({
       gltfListenerMap.delete(component.eid)
     }
     fireMatsMap.delete(component.eid)
-    emberMatsMap.delete(component.eid)
+    p1MatsMap.delete(component.eid)
+    p2MatsMap.delete(component.eid)
     setupDoneMap.delete(component.eid)
   },
 })

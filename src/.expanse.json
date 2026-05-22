@@ -103,7 +103,7 @@
       "position": [
         0,
         0,
-        0.005911300400293695
+        -0.09068441215926698
       ],
       "rotation": [
         0.025671735243504634,
@@ -175,29 +175,17 @@
           "id": "c1a2b3c4-d5e6-7890-abcd-ef1234560001",
           "name": "sculpture-fire",
           "parameters": {
-            "offsetX": -2,
-            "offsetY": 4,
-            "offsetZ": -10,
-            "fHeight": 11,
-            "intensity": 12.899999999999977,
-            "speed": 0.02,
             "density": 0.3,
-            "pillarOn": 0,
-            "pillarX": 1,
-            "pillarY": 1,
-            "pillarZ": 1,
-            "pillarH": 1,
-            "pillarW": 1,
-            "pillarInt": 1,
+            "speed": 0.01,
             "audioReact": 0,
-            "p1Count": 20,
-            "p1Size": 4,
-            "p1Speed": 0.2,
-            "p1Rise": 1,
-            "p2Count": 20,
-            "p2Size": 7,
-            "p2Speed": 0.2,
-            "p2Rise": 2
+            "p1Count": 0.2,
+            "p1Size": 20,
+            "p1Speed": 0.8,
+            "p1Rise": 0.6,
+            "p2Count": 5,
+            "p2Size": 12,
+            "p2Speed": 0.25,
+            "p2Rise": 0.55
           }
         }
       },

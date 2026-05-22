@@ -181,7 +181,7 @@
     const iconPause   = document.getElementById('icon-paused')
 
     // Starta-knapp — startar musik + visar AR-overlay
-    startBtn.addEventListener('click', () => {
+    const startExperience = (showAROverlay = true) => {
       const audio = window._arAudio
       if (audio) {
         audio.play().catch(() => {})
@@ -189,9 +189,18 @@
       startScreen.classList.add('hidden')
       setTimeout(() => {
         startScreen.style.display = 'none'
-        arOverlay.classList.add('visible')
+        if (showAROverlay) arOverlay.classList.add('visible')
       }, 650)
-    })
+    }
+    startBtn.addEventListener('click', () => startExperience(true))
+
+    // Editor-läge: hoppa över både startskärm och AR-overlay
+    // 8th Wall-editorn kör förhandsgranskningen i en iframe — detektera det
+    const isInEditor    = window.self !== window.top
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isInEditor || !isTouchDevice) {
+      startExperience(false)
+    }
 
     // Musik-knapp — pausa/spela
     musicBtn.addEventListener('click', () => {
