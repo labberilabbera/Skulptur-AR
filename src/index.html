@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Skulptur AR - Eld</title>
+  <meta itemprop="name" content="Skulptur AR - Eld">
+  <meta name="twitter:title" content="Skulptur AR - Eld">
+  <meta property="og:title" content="Skulptur AR - Eld">
+  <meta property="og:site_name" content="Skulptur AR - Eld">
+  <meta name="description" content="AR-upplevelse med eldeffekt på skulptur.">
+  <meta itemprop="description" content="AR-upplevelse med eldeffekt på skulptur.">
+  <meta property="og:description" content="AR-upplevelse med eldeffekt på skulptur.">
+  <meta name="twitter:description" content="AR-upplevelse med eldeffekt på skulptur.">
+  <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
+  <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam">
+  </script>
+
+</head>
+
+<body>
+<script src="bundle.js"></script>
+
+<!-- Instruktions-overlay -->
+<div id="ar-overlay">
+  <div id="ar-overlay-inner">
+    <div id="scan-ring"></div>
+    <p id="ar-text">Peka kameran mot skulpturen</p>
+  </div>
+</div>
+
+<style>
+  #ar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+  #ar-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #ar-overlay-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+  #scan-ring {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: rgba(255, 160, 40, 0.9);
+    border-right-color: rgba(255, 160, 40, 0.5);
+    animation: spin 1.8s linear infinite;
+    position: relative;
+  }
+  #scan-ring::after {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 160, 40, 0.2);
+  }
+  #ar-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-family: system-ui, sans-serif;
+    font-size: 18px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    text-align: center;
+    margin: 0;
+    padding: 0 32px;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50%       { opacity: 1.0; }
+  }
+</style>
+
+<script>
+  window.addEventListener('xrloaded', () => {
+    XR8.addCameraPipelineModule({
+      name: 'ar-overlay-module',
+      listeners: [
+        {
+          event: 'reality.imagefound',
+          process: ({detail}) => {
+            if (detail.name !== 'fram') return
+            const overlay = document.getElementById('ar-overlay')
+            overlay.classList.add('hidden')
+            setTimeout(() => { overlay.style.display = 'none' }, 900)
+          },
+        },
+      ],
+    })
+  })
+</script>
+
+<style>
+  #music-btn {
+    position: fixed;
+    bottom: 28px;
+    right: 24px;
+    z-index: 9999;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+  }
+  #music-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+  }
+</style>
+
+<button id="music-btn" aria-label="Spela/pausa musik">
+  <svg id="icon-playing" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+  <svg id="icon-paused" viewBox="0 0 24 24" style="display:none"><path d="M8 5v14l11-7z"/></svg>
+</button>
+
+<script>
+  window.addEventListener('load', () => {
+    const btn       = document.getElementById('music-btn')
+    const iconPlay  = document.getElementById('icon-playing')
+    const iconPause = document.getElementById('icon-paused')
+
+    btn.addEventListener('click', () => {
+      const audio = window._arAudio
+      if (!audio) return
+      if (audio.paused) {
+        audio.play()
+        iconPlay.style.display  = ''
+        iconPause.style.display = 'none'
+      } else {
+        audio.pause()
+        iconPlay.style.display  = 'none'
+        iconPause.style.display = ''
+      }
+    })
+  })
+</script>
+
+</body>
+
+</html>

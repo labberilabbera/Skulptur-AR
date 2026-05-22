@@ -1,0 +1,225 @@
+{
+  "objects": {
+    "47699d9e-18a5-4f88-a4f9-b8be92e8f74a": {
+      "components": {},
+      "geometry": null,
+      "id": "47699d9e-18a5-4f88-a4f9-b8be92e8f74a",
+      "light": {
+        "type": "ambient",
+        "intensity": 1.2
+      },
+      "material": null,
+      "name": "Ambient Light",
+      "position": [
+        10,
+        5,
+        5
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",
+      "order": 0.4038940050501252
+    },
+    "ac1989e3-3b71-49e2-a05f-e682aeb18c36": {
+      "components": {},
+      "geometry": null,
+      "id": "ac1989e3-3b71-49e2-a05f-e682aeb18c36",
+      "light": {
+        "intensity": 0.8,
+        "type": "directional"
+      },
+      "material": null,
+      "name": "Directional Light",
+      "position": [
+        20,
+        50,
+        10
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",
+      "order": 0.6644431107322474
+    },
+    "a608ddd9-9379-464d-966f-5d8d8674c83c": {
+      "camera": {
+        "type": "perspective",
+        "xr": {
+          "desktop": "3D",
+          "xrCameraType": "world",
+          "headset": "disabled"
+        }
+      },
+      "components": {},
+      "geometry": null,
+      "id": "a608ddd9-9379-464d-966f-5d8d8674c83c",
+      "material": null,
+      "name": "Camera",
+      "position": [
+        0,
+        1.6,
+        3
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",
+      "order": 1.0308214152219775
+    },
+    "b2c4e8f1-1234-4abc-8def-000000000001": {
+      "components": {},
+      "geometry": null,
+      "id": "b2c4e8f1-1234-4abc-8def-000000000001",
+      "imageTarget": {
+        "name": "fram"
+      },
+      "material": null,
+      "name": "ImageTarget - fram",
+      "position": [
+        0,
+        0,
+        0.005911300400293695
+      ],
+      "rotation": [
+        0.026199162926788734,
+        -0.12132941150265081,
+        -0.0020384000318629117,
+        0.9922643915266063
+      ],
+      "scale": [
+        1.0000000000000018,
+        1.0000000000000009,
+        1.0000000000000013
+      ],
+      "parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",
+      "order": 2,
+      "hidden": false
+    },
+    "b2c4e8f1-1234-4abc-8def-000000000002": {
+      "components": {},
+      "geometry": null,
+      "id": "b2c4e8f1-1234-4abc-8def-000000000002",
+      "material": null,
+      "name": "Skulptur",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0.38831112391869405,
+        -0.6641952077743648,
+        -0.3015627345756589,
+        0.563133300494492
+      ],
+      "scale": [
+        1,
+        0.9999999999999998,
+        1.0000000000000002
+      ],
+      "parentId": "b2c4e8f1-1234-4abc-8def-000000000001",
+      "order": 3,
+      "hidden": false
+    },
+    "62f22cd6-d16d-49af-a670-614dd9a690f3": {
+      "id": "62f22cd6-d16d-49af-a670-614dd9a690f3",
+      "position": [
+        0.4561387418785394,
+        -0.05800466245502772,
+        -0.06851982731956952
+      ],
+      "rotation": [
+        -0.22869203778919145,
+        0.5222616927877781,
+        0.290120771396181,
+        0.7686173391895063
+      ],
+      "scale": [
+        0.9999999999999978,
+        0.9999999999999993,
+        0.9999999999999989
+      ],
+      "geometry": null,
+      "material": {
+        "type": "basic",
+        "color": "#FFFFFF"
+      },
+      "parentId": "b2c4e8f1-1234-4abc-8def-000000000002",
+      "components": {
+        "c1a2b3c4-d5e6-7890-abcd-ef1234560001": {
+          "id": "c1a2b3c4-d5e6-7890-abcd-ef1234560001",
+          "name": "sculpture-fire",
+          "parameters": {
+            "offsetX": -2,
+            "offsetY": 4,
+            "offsetZ": -10,
+            "fHeight": 11,
+            "intensity": 12.899999999999977,
+            "speed": 0.02,
+            "density": 0.3,
+            "pillarOn": 0,
+            "pillarX": 1,
+            "pillarY": 1,
+            "pillarZ": 1,
+            "pillarH": 1,
+            "pillarW": 1,
+            "pillarInt": 1,
+            "audioReact": 0,
+            "p1Count": 20,
+            "p1Size": 4,
+            "p1Speed": 0.2,
+            "p1Rise": 1,
+            "p2Count": 20,
+            "p2Size": 7,
+            "p2Speed": 0.2,
+            "p2Rise": 2
+          }
+        }
+      },
+      "gltfModel": {
+        "src": {
+          "type": "asset",
+          "asset": "assets/sculpture.glb"
+        },
+        "animationClip": "",
+        "loop": true
+      },
+      "name": "sculpture.glb",
+      "order": 1.3840027751246284,
+      "hidden": false
+    }
+  },
+  "spaces": {
+    "88453035-dc0f-486d-868a-8ff7c2fda864": {
+      "id": "88453035-dc0f-486d-868a-8ff7c2fda864",
+      "name": "Default Space",
+      "activeCamera": "a608ddd9-9379-464d-966f-5d8d8674c83c"
+    }
+  },
+  "entrySpaceId": "88453035-dc0f-486d-868a-8ff7c2fda864"
+}
