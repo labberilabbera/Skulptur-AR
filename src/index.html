@@ -182,9 +182,11 @@
 
     // Starta-knapp — startar musik + visar AR-overlay
     const startExperience = (showAROverlay = true) => {
+      // Sätt upp audio-analysern (audioReact) och starta musiken
+      if (window._setupAudioAnalyser) window._setupAudioAnalyser()
       const audio = window._arAudio
       if (audio) {
-        audio.play().catch(() => {})
+        audio.play().catch(err => console.warn('[audio] play failed:', err))
       }
       startScreen.classList.add('hidden')
       setTimeout(() => {

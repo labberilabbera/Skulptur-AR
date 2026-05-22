@@ -9,6 +9,7 @@ export const fireVertexShader = /* glsl */ `
 export const fireFragmentShader = /* glsl */ `
   uniform float time;
   uniform float density;
+  uniform float uAudioShift;  // 0 = kall lila/blå, 1 = varm orange/gul
   varying vec2 vUv;
 
   vec2 hash2(vec2 p) {
@@ -36,17 +37,36 @@ export const fireFragmentShader = /* glsl */ `
       vUv.y - time * 0.42
     );
 
-    float n1  = fbm(animated * 2.8);
-    float n2  = fbm(animated * 5.0 + vec2(8.3, 1.4) - time * 0.14);
+    float n1   = fbm(animated * 2.8);
+    float n2   = fbm(animated * 5.0 + vec2(8.3, 1.4) - time * 0.14);
     float fire = n1 * 0.62 + n2 * 0.38;
 
     float heightFade = 1.0 - smoothstep(0.0, 1.2, vUv.y) * 0.5;
     fire *= heightFade;
 
-    vec3 col = mix(vec3(0.05, 0.0,  0.65), vec3(0.85, 0.06, 0.0 ), smoothstep(0.20, 0.42, fire));
-    col       = mix(col,               vec3(1.0,  0.42, 0.01), smoothstep(0.42, 0.58, fire));
-    col       = mix(col,               vec3(1.0,  0.80, 0.08), smoothstep(0.58, 0.75, fire));
-    col       = mix(col,               vec3(1.0,  0.97, 0.80), smoothstep(0.75, 0.92, fire));
+    // ── Färgpalett som skiftar med audio ─────────────────────────────────
+    // Kall palett (tyst): mörk lila → blå → ljusblå → vit
+    vec3 coolBase   = vec3(0.30, 0.02, 0.55);
+    vec3 coolMid    = vec3(0.10, 0.20, 0.95);
+    vec3 coolBright = vec3(0.35, 0.55, 1.00);
+    vec3 coolCore   = vec3(0.85, 0.92, 1.00);
+
+    // Varm palett (musik pumpar): mörk röd → orange → gul → vit-gul
+    vec3 warmBase   = vec3(0.55, 0.03, 0.0);
+    vec3 warmMid    = vec3(1.00, 0.42, 0.01);
+    vec3 warmBright = vec3(1.00, 0.85, 0.10);
+    vec3 warmCore   = vec3(1.00, 0.97, 0.80);
+
+    // Interpolera hela paletten baserat på audio
+    vec3 base   = mix(coolBase,   warmBase,   uAudioShift);
+    vec3 mid    = mix(coolMid,    warmMid,    uAudioShift);
+    vec3 bright = mix(coolBright, warmBright, uAudioShift);
+    vec3 core   = mix(coolCore,   warmCore,   uAudioShift);
+
+    // Gradient baserat på noise-intensitet
+    vec3 col = mix(base, mid,    smoothstep(0.20, 0.42, fire));
+    col      = mix(col,  bright, smoothstep(0.42, 0.65, fire));
+    col      = mix(col,  core,   smoothstep(0.65, 0.92, fire));
 
     float alpha = smoothstep(0.12, 0.44, fire) * density;
 

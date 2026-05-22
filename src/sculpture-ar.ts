@@ -10,6 +10,9 @@ const setupDoneMap    = new Map<bigint, boolean>()
 
 let THREE: any = null
 
+// Smoothing state per entity för audio shift — undviker jittriga skift
+const audioShiftSmoothMap = new Map<bigint, number>()
+
 ecs.registerComponent({
   name: 'sculpture-fire',
 
@@ -88,7 +91,11 @@ ecs.registerComponent({
         // ── Surface fire ──────────────────────────────────────────────────────
         const fireMat = new THREE.ShaderMaterial({
           vertexShader: fireVertexShader, fragmentShader: fireFragmentShader,
-          uniforms:     {time: {value: 0}, density: {value: s.density}},
+          uniforms: {
+            time:        {value: 0},
+            density:     {value: s.density},
+            uAudioShift: {value: 0},
+          },
           transparent: true, blending: THREE.AdditiveBlending,
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
         })
@@ -162,27 +169,42 @@ ecs.registerComponent({
     const s  = component.schema
     const ad = (window as any).audioData
 
+    // ── Audio-reaktivt FÄRGSKIFTE (enda audio-effekten) ─────────────────────
+    // Endast kroppens färg påverkas — partiklarna är ren eld, oberoende
     const react = s.audioReact
     const bass  = ad?.active ? ad.bass : 0
     const mid   = ad?.active ? ad.mid  : 0
+    const treble = ad?.active ? (ad.treble ?? 0) : 0
 
-    const effectiveDensity = s.density * (1.0 + bass * react * 2.0)
-    const effectiveSpeed   = s.speed   * (1.0 + mid  * react * 1.2)
+    // Räkna ut råvärdet — bas och höga toner driver mer mot varmt
+    // (höga toner = sax-toppar → mer orange)
+    const rawShift = ad?.active
+      ? Math.min(1.0, (bass * 0.9 + mid * 0.5 + treble * 1.1) * react * 0.6)
+      : 0
 
+    // Smooth med exponential moving average så skiftet blir harmoniskt
+    // (lugn shaman-musik mår bra av mjuk blending, inte snabba blixtar)
+    const prev   = audioShiftSmoothMap.get(component.eid) ?? 0
+    const smooth = prev + (rawShift - prev) * 0.08   // 0.08 = mjuk följning
+    audioShiftSmoothMap.set(component.eid, smooth)
+
+    // ── Uppdatera kroppens eldmaterial ──────────────────────────────────────
     const fireMats = fireMatsMap.get(component.eid)
     if (fireMats) {
       for (const mat of fireMats) {
-        mat.uniforms.time.value    = t * effectiveSpeed
-        mat.uniforms.density.value = effectiveDensity
+        mat.uniforms.time.value        = t * s.speed
+        mat.uniforms.density.value     = s.density
+        mat.uniforms.uAudioShift.value = smooth
       }
     }
 
+    // ── Partiklar — alltid samma uppåtgående rörelse, ingen audio ──────────
     const p1Mats = p1MatsMap.get(component.eid)
     if (p1Mats) {
       for (const mat of p1Mats) {
         mat.uniforms.time.value     = t
         mat.uniforms.uSize.value    = s.p1Size
-        mat.uniforms.uSpeed.value   = s.p1Speed * effectiveSpeed
+        mat.uniforms.uSpeed.value   = s.p1Speed
         mat.uniforms.uRise.value    = s.p1Rise
         mat.uniforms.uMaxFrac.value = s.p1Count
       }
@@ -193,7 +215,7 @@ ecs.registerComponent({
       for (const mat of p2Mats) {
         mat.uniforms.time.value     = t
         mat.uniforms.uSize.value    = s.p2Size
-        mat.uniforms.uSpeed.value   = s.p2Speed * effectiveSpeed
+        mat.uniforms.uSpeed.value   = s.p2Speed
         mat.uniforms.uRise.value    = s.p2Rise
         mat.uniforms.uMaxFrac.value = s.p2Count
       }
@@ -210,5 +232,6 @@ ecs.registerComponent({
     p1MatsMap.delete(component.eid)
     p2MatsMap.delete(component.eid)
     setupDoneMap.delete(component.eid)
+    audioShiftSmoothMap.delete(component.eid)
   },
 })
