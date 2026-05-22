@@ -1,23 +1,23 @@
 {
   "type": "PLANAR",
   "properties": {
-    "top": 0,
-    "left": 256,
-    "width": 1536,
-    "height": 2048,
+    "top": 504,
+    "left": 0,
+    "width": 2268,
+    "height": 3024,
     "isRotated": false,
-    "originalWidth": 2048,
-    "originalHeight": 2048
+    "originalWidth": 2268,
+    "originalHeight": 4032
   },
-  "imagePath": "image-targets/fram_luminance.png",
+  "imagePath": "image-targets/fram_luminance.jpg",
   "metadata": null,
   "name": "fram",
   "resources": {
-    "originalImage": "fram_original.png",
-    "croppedImage": "fram_cropped.png",
-    "thumbnailImage": "fram_thumbnail.png",
-    "luminanceImage": "fram_luminance.png"
+    "originalImage": "fram_original.jpg",
+    "croppedImage": "fram_cropped.jpg",
+    "thumbnailImage": "fram_thumbnail.jpg",
+    "luminanceImage": "fram_luminance.jpg"
   },
-  "created": 1779460405805,
-  "updated": 1779460415319
+  "created": 1779461769993,
+  "updated": 1779461769993
 }

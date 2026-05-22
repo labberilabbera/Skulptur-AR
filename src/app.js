@@ -61,7 +61,7 @@ const onxrloaded = () => {
   // AudioContext kräver user gesture på mobil — sätt upp vid första touch
   const onFirstTouch = () => {
     setupAnalyser(audio)
-    document.removeEventListener('touchstart', onFirstTouch)
+    audio.play().catch(() => {})
   }
   document.addEventListener('touchstart', onFirstTouch, {once: true})
 

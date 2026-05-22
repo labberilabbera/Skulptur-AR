@@ -17,35 +17,73 @@
   <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
   <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam">
   </script>
-
 </head>
 
 <body>
 <script src="bundle.js"></script>
 
-<!-- Instruktions-overlay -->
-<div id="ar-overlay">
-  <div id="ar-overlay-inner">
-    <div id="scan-ring"></div>
-    <p id="ar-text">Peka kameran mot skulpturen</p>
-  </div>
-</div>
-
 <style>
+  /* ── Startskärm ─────────────────────────────────────────────────── */
+  #start-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    transition: opacity 0.6s ease;
+  }
+  #start-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #start-title {
+    color: rgba(255, 255, 255, 0.9);
+    font-family: system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    text-align: center;
+    margin: 0;
+    padding: 0 40px;
+  }
+  #start-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 160, 40, 0.8);
+    border-radius: 50px;
+    color: rgba(255, 160, 40, 0.9);
+    font-family: system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    padding: 16px 48px;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+  }
+  #start-btn:active {
+    background: rgba(255, 160, 40, 0.2);
+  }
+
+  /* ── AR-overlay (visas efter start) ─────────────────────────────── */
   #ar-overlay {
     position: fixed;
     inset: 0;
     z-index: 10000;
     background: rgba(0, 0, 0, 0.72);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     transition: opacity 0.8s ease;
     pointer-events: none;
   }
+  #ar-overlay.visible {
+    display: flex;
+  }
   #ar-overlay.hidden {
     opacity: 0;
-    pointer-events: none;
   }
   #ar-overlay-inner {
     display: flex;
@@ -88,28 +126,8 @@
     0%, 100% { opacity: 0.7; }
     50%       { opacity: 1.0; }
   }
-</style>
 
-<script>
-  window.addEventListener('xrloaded', () => {
-    XR8.addCameraPipelineModule({
-      name: 'ar-overlay-module',
-      listeners: [
-        {
-          event: 'reality.imagefound',
-          process: ({detail}) => {
-            if (detail.name !== 'fram') return
-            const overlay = document.getElementById('ar-overlay')
-            overlay.classList.add('hidden')
-            setTimeout(() => { overlay.style.display = 'none' }, 900)
-          },
-        },
-      ],
-    })
-  })
-</script>
-
-<style>
+  /* ── Musik-knapp ─────────────────────────────────────────────────── */
   #music-btn {
     position: fixed;
     bottom: 28px;
@@ -133,6 +151,21 @@
   }
 </style>
 
+<!-- Startskärm -->
+<div id="start-screen">
+  <p id="start-title">Tryck för att starta upplevelsen</p>
+  <button id="start-btn">STARTA</button>
+</div>
+
+<!-- AR-overlay (visas efter start) -->
+<div id="ar-overlay">
+  <div id="ar-overlay-inner">
+    <div id="scan-ring"></div>
+    <p id="ar-text">Rikta kameran mot skulpturen</p>
+  </div>
+</div>
+
+<!-- Musik-knapp -->
 <button id="music-btn" aria-label="Spela/pausa musik">
   <svg id="icon-playing" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
   <svg id="icon-paused" viewBox="0 0 24 24" style="display:none"><path d="M8 5v14l11-7z"/></svg>
@@ -140,11 +173,28 @@
 
 <script>
   window.addEventListener('load', () => {
-    const btn       = document.getElementById('music-btn')
-    const iconPlay  = document.getElementById('icon-playing')
-    const iconPause = document.getElementById('icon-paused')
+    const startScreen = document.getElementById('start-screen')
+    const startBtn    = document.getElementById('start-btn')
+    const arOverlay   = document.getElementById('ar-overlay')
+    const musicBtn    = document.getElementById('music-btn')
+    const iconPlay    = document.getElementById('icon-playing')
+    const iconPause   = document.getElementById('icon-paused')
 
-    btn.addEventListener('click', () => {
+    // Starta-knapp — startar musik + visar AR-overlay
+    startBtn.addEventListener('click', () => {
+      const audio = window._arAudio
+      if (audio) {
+        audio.play().catch(() => {})
+      }
+      startScreen.classList.add('hidden')
+      setTimeout(() => {
+        startScreen.style.display = 'none'
+        arOverlay.classList.add('visible')
+      }, 650)
+    })
+
+    // Musik-knapp — pausa/spela
+    musicBtn.addEventListener('click', () => {
       const audio = window._arAudio
       if (!audio) return
       if (audio.paused) {
@@ -158,8 +208,25 @@
       }
     })
   })
+
+  // Göm AR-overlay när image target hittas
+  window.addEventListener('xrloaded', () => {
+    XR8.addCameraPipelineModule({
+      name: 'ar-overlay-module',
+      listeners: [
+        {
+          event: 'reality.imagefound',
+          process: ({detail}) => {
+            if (detail.name !== 'fram') return
+            const overlay = document.getElementById('ar-overlay')
+            overlay.classList.add('hidden')
+            setTimeout(() => { overlay.classList.remove('visible') }, 900)
+          },
+        },
+      ],
+    })
+  })
 </script>
 
 </body>
-
 </html>
