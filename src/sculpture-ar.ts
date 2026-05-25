@@ -172,20 +172,22 @@ ecs.registerComponent({
     // ── Audio-reaktivt FÄRGSKIFTE (enda audio-effekten) ─────────────────────
     // Endast kroppens färg påverkas — partiklarna är ren eld, oberoende
     const react = s.audioReact
-    const bass  = ad?.active ? ad.bass : 0
-    const mid   = ad?.active ? ad.mid  : 0
+    const bass   = ad?.active ? ad.bass : 0
+    const mid    = ad?.active ? ad.mid  : 0
     const treble = ad?.active ? (ad.treble ?? 0) : 0
 
-    // Räkna ut råvärdet — bas och höga toner driver mer mot varmt
-    // (höga toner = sax-toppar → mer orange)
-    const rawShift = ad?.active
-      ? Math.min(1.0, (bass * 0.9 + mid * 0.5 + treble * 1.1) * react * 0.6)
+    // Vokala toppar = mid + treble driver mot orange/röd
+    // Bas ger en stadig grundnivå (mörk lila → gul)
+    // Resultatet boostas av audioReact + en stark grundkänslighet
+    const vocalEnergy = mid * 0.6 + treble * 1.8           // sång/sax-toppar
+    const bodyEnergy  = bass * 0.6                          // trumma
+    const rawShift    = ad?.active
+      ? Math.min(1.0, (vocalEnergy + bodyEnergy) * react * 1.8)
       : 0
 
-    // Smooth med exponential moving average så skiftet blir harmoniskt
-    // (lugn shaman-musik mår bra av mjuk blending, inte snabba blixtar)
+    // EMA-smoothing — något snabbare för tydligare reaktivitet på sång
     const prev   = audioShiftSmoothMap.get(component.eid) ?? 0
-    const smooth = prev + (rawShift - prev) * 0.08   // 0.08 = mjuk följning
+    const smooth = prev + (rawShift - prev) * 0.15
     audioShiftSmoothMap.set(component.eid, smooth)
 
     // ── Uppdatera kroppens eldmaterial ──────────────────────────────────────

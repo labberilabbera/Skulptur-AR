@@ -9,7 +9,7 @@ export const fireVertexShader = /* glsl */ `
 export const fireFragmentShader = /* glsl */ `
   uniform float time;
   uniform float density;
-  uniform float uAudioShift;  // 0 = kall lila/blå, 1 = varm orange/gul
+  uniform float uAudioShift;  // 0=blålila, 0.33=gul, 0.66=orange, 1=röd
   varying vec2 vUv;
 
   vec2 hash2(vec2 p) {
@@ -44,26 +44,58 @@ export const fireFragmentShader = /* glsl */ `
     float heightFade = 1.0 - smoothstep(0.0, 1.2, vUv.y) * 0.5;
     fire *= heightFade;
 
-    // ── Färgpalett som skiftar med audio ─────────────────────────────────
-    // Kall palett (tyst): mörk lila → blå → ljusblå → vit
-    vec3 coolBase   = vec3(0.30, 0.02, 0.55);
-    vec3 coolMid    = vec3(0.10, 0.20, 0.95);
-    vec3 coolBright = vec3(0.35, 0.55, 1.00);
-    vec3 coolCore   = vec3(0.85, 0.92, 1.00);
+    // ── 4 paletter — kroppen skiftar tydligt mellan dem baserat på musik ──
+    //
+    // PALETT 1 (vila, tystare): BLÅLILA
+    vec3 p1Base   = vec3(0.25, 0.02, 0.50);  // mörk lila
+    vec3 p1Mid    = vec3(0.15, 0.20, 0.95);  // klar blå
+    vec3 p1Bright = vec3(0.40, 0.60, 1.00);  // ljusblå
+    vec3 p1Core   = vec3(0.85, 0.92, 1.00);  // vit-blå
+    //
+    // PALETT 2: GUL (mid-höga ljud)
+    vec3 p2Base   = vec3(0.55, 0.30, 0.0);   // mörk amber
+    vec3 p2Mid    = vec3(1.00, 0.75, 0.05);  // varm gul
+    vec3 p2Bright = vec3(1.00, 0.95, 0.20);  // klar gul
+    vec3 p2Core   = vec3(1.00, 1.00, 0.80);  // vit-gul
+    //
+    // PALETT 3: ORANGE (höjningar)
+    vec3 p3Base   = vec3(0.55, 0.10, 0.0);   // mörk orange
+    vec3 p3Mid    = vec3(1.00, 0.40, 0.02);  // klar orange
+    vec3 p3Bright = vec3(1.00, 0.65, 0.10);  // ljus orange
+    vec3 p3Core   = vec3(1.00, 0.88, 0.55);  // vit-orange
+    //
+    // PALETT 4: RÖD (höga toppar/sax-toppar)
+    vec3 p4Base   = vec3(0.40, 0.0, 0.05);   // djupröd
+    vec3 p4Mid    = vec3(0.95, 0.08, 0.05);  // klar röd
+    vec3 p4Bright = vec3(1.00, 0.30, 0.20);  // ljusare röd
+    vec3 p4Core   = vec3(1.00, 0.70, 0.55);  // vit-röd
 
-    // Varm palett (musik pumpar): mörk röd → orange → gul → vit-gul
-    vec3 warmBase   = vec3(0.55, 0.03, 0.0);
-    vec3 warmMid    = vec3(1.00, 0.42, 0.01);
-    vec3 warmBright = vec3(1.00, 0.85, 0.10);
-    vec3 warmCore   = vec3(1.00, 0.97, 0.80);
+    // Smidig interpolation mellan paletterna
+    float toYellow = smoothstep(0.0,  0.33, uAudioShift);
+    float toOrange = smoothstep(0.33, 0.66, uAudioShift);
+    float toRed    = smoothstep(0.66, 1.0,  uAudioShift);
 
-    // Interpolera hela paletten baserat på audio
-    vec3 base   = mix(coolBase,   warmBase,   uAudioShift);
-    vec3 mid    = mix(coolMid,    warmMid,    uAudioShift);
-    vec3 bright = mix(coolBright, warmBright, uAudioShift);
-    vec3 core   = mix(coolCore,   warmCore,   uAudioShift);
+    vec3 base   = p1Base;
+    base = mix(base, p2Base, toYellow);
+    base = mix(base, p3Base, toOrange);
+    base = mix(base, p4Base, toRed);
 
-    // Gradient baserat på noise-intensitet
+    vec3 mid    = p1Mid;
+    mid = mix(mid, p2Mid, toYellow);
+    mid = mix(mid, p3Mid, toOrange);
+    mid = mix(mid, p4Mid, toRed);
+
+    vec3 bright = p1Bright;
+    bright = mix(bright, p2Bright, toYellow);
+    bright = mix(bright, p3Bright, toOrange);
+    bright = mix(bright, p4Bright, toRed);
+
+    vec3 core   = p1Core;
+    core = mix(core, p2Core, toYellow);
+    core = mix(core, p3Core, toOrange);
+    core = mix(core, p4Core, toRed);
+
+    // Gradient i ytan baserat på noise
     vec3 col = mix(base, mid,    smoothstep(0.20, 0.42, fire));
     col      = mix(col,  bright, smoothstep(0.42, 0.65, fire));
     col      = mix(col,  core,   smoothstep(0.65, 0.92, fire));
