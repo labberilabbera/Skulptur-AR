@@ -177,7 +177,7 @@
           "parameters": {
             "density": 0.3,
             "speed": 0.01,
-            "audioReact": 0.28,
+            "audioReact": 0.3,
             "p1Count": 0.5,
             "p1Size": 20,
             "p1Speed": 0.004,

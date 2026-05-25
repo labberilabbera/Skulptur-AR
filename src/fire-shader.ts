@@ -82,6 +82,12 @@ export const fireFragmentShader = /* glsl */ `
 
     vec3 col = mix(restCol, barCol, litFactor);
 
+    // ── Overdrive: vid de högsta tonerna flammar HELA kroppen glödröd ──────
+    // När baren når nära huvudet (audioLevel > 0.78) börjar hela skulpturen
+    // bli glödröd, oavsett vertikal position. Full overdrive vid 1.0.
+    float overdrive = smoothstep(0.78, 1.0, uAudioLevel);
+    col = mix(col, colGlowRed * 1.15, overdrive);
+
     float alpha = smoothstep(0.12, 0.44, fire) * density;
 
     gl_FragColor = vec4(col * 1.25, alpha);
