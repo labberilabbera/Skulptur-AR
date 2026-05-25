@@ -88,13 +88,21 @@ ecs.registerComponent({
       model.traverse((child: any) => {
         if (!child.isMesh) return
 
-        // ── Surface fire ──────────────────────────────────────────────────────
+        // Räkna ut Y-min/max så shadern kan mappa varje vertex till 0-1 (ben→huvud)
+        child.geometry.computeBoundingBox()
+        const bb   = child.geometry.boundingBox
+        const yMin = bb ? bb.min.y : -1
+        const yMax = bb ? bb.max.y :  1
+
+        // ── Surface fire med VU-bar ───────────────────────────────────────────
         const fireMat = new THREE.ShaderMaterial({
           vertexShader: fireVertexShader, fragmentShader: fireFragmentShader,
           uniforms: {
             time:        {value: 0},
             density:     {value: s.density},
-            uAudioShift: {value: 0},
+            uAudioLevel: {value: 0},
+            uModelYMin:  {value: yMin},
+            uModelYMax:  {value: yMax},
           },
           transparent: true, blending: THREE.AdditiveBlending,
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
@@ -169,25 +177,22 @@ ecs.registerComponent({
     const s  = component.schema
     const ad = (window as any).audioData
 
-    // ── Audio-reaktivt FÄRGSKIFTE (enda audio-effekten) ─────────────────────
-    // Endast kroppens färg påverkas — partiklarna är ren eld, oberoende
+    // ── Audio-reaktiv VU-bar (enda audio-effekten) ─────────────────────────
+    // Baren reser sig från benen mot huvudet med musiken — partiklar oberoende
     const react = s.audioReact
     const bass   = ad?.active ? ad.bass : 0
     const mid    = ad?.active ? ad.mid  : 0
     const treble = ad?.active ? (ad.treble ?? 0) : 0
 
-    // Vokala toppar = mid + treble driver mot orange/röd
-    // Bas ger en stadig grundnivå (mörk lila → gul)
-    // Resultatet boostas av audioReact + en stark grundkänslighet
-    const vocalEnergy = mid * 0.6 + treble * 1.8           // sång/sax-toppar
-    const bodyEnergy  = bass * 0.6                          // trumma
-    const rawShift    = ad?.active
-      ? Math.min(1.0, (vocalEnergy + bodyEnergy) * react * 1.8)
-      : 0
+    // Musiken är hög-pitch (sax, sång, trumma) — treble och mid driver mest
+    // Bas ger stadig botten, treble/mid driver baren uppåt mot huvudet
+    const energy = bass * 0.5 + mid * 1.0 + treble * 1.6
+    const rawLevel = ad?.active ? Math.min(1.0, energy * react * 1.5) : 0
 
-    // EMA-smoothing — något snabbare för tydligare reaktivitet på sång
+    // Snabb respons — både uppgång och nedgång ska kännas omedelbart
+    // (höjningar i sång → uppåt, pauser → snabbt ner till lila)
     const prev   = audioShiftSmoothMap.get(component.eid) ?? 0
-    const smooth = prev + (rawShift - prev) * 0.15
+    const smooth = prev + (rawLevel - prev) * 0.35
     audioShiftSmoothMap.set(component.eid, smooth)
 
     // ── Uppdatera kroppens eldmaterial ──────────────────────────────────────
@@ -196,7 +201,7 @@ ecs.registerComponent({
       for (const mat of fireMats) {
         mat.uniforms.time.value        = t * s.speed
         mat.uniforms.density.value     = s.density
-        mat.uniforms.uAudioShift.value = smooth
+        mat.uniforms.uAudioLevel.value = smooth
       }
     }
 

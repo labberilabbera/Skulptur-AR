@@ -1,7 +1,13 @@
 export const fireVertexShader = /* glsl */ `
-  varying vec2 vUv;
+  uniform float uModelYMin;
+  uniform float uModelYMax;
+
+  varying vec2  vUv;
+  varying float vYNorm;   // 0 = ben, 1 = huvud
+
   void main() {
     vUv = uv;
+    vYNorm = clamp((position.y - uModelYMin) / max(uModelYMax - uModelYMin, 0.001), 0.0, 1.0);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
@@ -9,8 +15,10 @@ export const fireVertexShader = /* glsl */ `
 export const fireFragmentShader = /* glsl */ `
   uniform float time;
   uniform float density;
-  uniform float uAudioShift;  // 0=blålila, 0.33=gul, 0.66=orange, 1=röd
-  varying vec2 vUv;
+  uniform float uAudioLevel;  // 0 = tyst (helt lila), 1 = maxpeak (glödröd vid huvudet)
+
+  varying vec2  vUv;
+  varying float vYNorm;
 
   vec2 hash2(vec2 p) {
     p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
@@ -32,11 +40,11 @@ export const fireFragmentShader = /* glsl */ `
   }
 
   void main() {
+    // ── Noise-rörelsen är samma som tidigare ───────────────────────────────
     vec2 animated = vec2(
       vUv.x + sin(vUv.y * 5.0 + time * 2.5) * 0.05,
       vUv.y - time * 0.42
     );
-
     float n1   = fbm(animated * 2.8);
     float n2   = fbm(animated * 5.0 + vec2(8.3, 1.4) - time * 0.14);
     float fire = n1 * 0.62 + n2 * 0.38;
@@ -44,64 +52,38 @@ export const fireFragmentShader = /* glsl */ `
     float heightFade = 1.0 - smoothstep(0.0, 1.2, vUv.y) * 0.5;
     fire *= heightFade;
 
-    // ── 4 paletter — kroppen skiftar tydligt mellan dem baserat på musik ──
-    //
-    // PALETT 1 (vila, tystare): BLÅLILA
-    vec3 p1Base   = vec3(0.25, 0.02, 0.50);  // mörk lila
-    vec3 p1Mid    = vec3(0.15, 0.20, 0.95);  // klar blå
-    vec3 p1Bright = vec3(0.40, 0.60, 1.00);  // ljusblå
-    vec3 p1Core   = vec3(0.85, 0.92, 1.00);  // vit-blå
-    //
-    // PALETT 2: GUL (mid-höga ljud)
-    vec3 p2Base   = vec3(0.55, 0.30, 0.0);   // mörk amber
-    vec3 p2Mid    = vec3(1.00, 0.75, 0.05);  // varm gul
-    vec3 p2Bright = vec3(1.00, 0.95, 0.20);  // klar gul
-    vec3 p2Core   = vec3(1.00, 1.00, 0.80);  // vit-gul
-    //
-    // PALETT 3: ORANGE (höjningar)
-    vec3 p3Base   = vec3(0.55, 0.10, 0.0);   // mörk orange
-    vec3 p3Mid    = vec3(1.00, 0.40, 0.02);  // klar orange
-    vec3 p3Bright = vec3(1.00, 0.65, 0.10);  // ljus orange
-    vec3 p3Core   = vec3(1.00, 0.88, 0.55);  // vit-orange
-    //
-    // PALETT 4: RÖD (höga toppar/sax-toppar)
-    vec3 p4Base   = vec3(0.40, 0.0, 0.05);   // djupröd
-    vec3 p4Mid    = vec3(0.95, 0.08, 0.05);  // klar röd
-    vec3 p4Bright = vec3(1.00, 0.30, 0.20);  // ljusare röd
-    vec3 p4Core   = vec3(1.00, 0.70, 0.55);  // vit-röd
+    // ── VU-bar logik ──────────────────────────────────────────────────────
+    // Audio-nivå styr hur högt upp på kroppen "baren" når.
+    // Mjuk kant så det inte ser ut som en skarp linje.
+    float barHeight = uAudioLevel;
+    float litFactor = smoothstep(barHeight + 0.12, barHeight - 0.04, vYNorm);
+    // litFactor = 1.0 under baren, 0.0 över baren, mjuk övergång
 
-    // Smidig interpolation mellan paletterna
-    float toYellow = smoothstep(0.0,  0.33, uAudioShift);
-    float toOrange = smoothstep(0.33, 0.66, uAudioShift);
-    float toRed    = smoothstep(0.66, 1.0,  uAudioShift);
+    // Position inom baren (0 vid benen, 1 vid barens topp)
+    float posInBar = clamp(vYNorm / max(barHeight, 0.001), 0.0, 1.0);
 
-    vec3 base   = p1Base;
-    base = mix(base, p2Base, toYellow);
-    base = mix(base, p3Base, toOrange);
-    base = mix(base, p4Base, toRed);
+    // ── Färggradient inom baren: lila → blå → gul → orange → röd → glödröd ──
+    vec3 colPurple  = vec3(0.45, 0.05, 0.80);   // ben (basen)
+    vec3 colBlue    = vec3(0.15, 0.30, 1.00);
+    vec3 colYellow  = vec3(1.00, 0.85, 0.10);
+    vec3 colOrange  = vec3(1.00, 0.40, 0.02);
+    vec3 colRed     = vec3(1.00, 0.05, 0.05);
+    vec3 colGlowRed = vec3(1.00, 0.45, 0.30);   // toppen — glödhett
 
-    vec3 mid    = p1Mid;
-    mid = mix(mid, p2Mid, toYellow);
-    mid = mix(mid, p3Mid, toOrange);
-    mid = mix(mid, p4Mid, toRed);
+    vec3 barCol = colPurple;
+    barCol = mix(barCol, colBlue,    smoothstep(0.05, 0.25, posInBar));
+    barCol = mix(barCol, colYellow,  smoothstep(0.25, 0.45, posInBar));
+    barCol = mix(barCol, colOrange,  smoothstep(0.45, 0.65, posInBar));
+    barCol = mix(barCol, colRed,     smoothstep(0.65, 0.85, posInBar));
+    barCol = mix(barCol, colGlowRed, smoothstep(0.85, 1.00, posInBar));
 
-    vec3 bright = p1Bright;
-    bright = mix(bright, p2Bright, toYellow);
-    bright = mix(bright, p3Bright, toOrange);
-    bright = mix(bright, p4Bright, toRed);
+    // Området ovanför baren = dämpad lila (vila)
+    vec3 restCol = colPurple * 0.55;
 
-    vec3 core   = p1Core;
-    core = mix(core, p2Core, toYellow);
-    core = mix(core, p3Core, toOrange);
-    core = mix(core, p4Core, toRed);
-
-    // Gradient i ytan baserat på noise
-    vec3 col = mix(base, mid,    smoothstep(0.20, 0.42, fire));
-    col      = mix(col,  bright, smoothstep(0.42, 0.65, fire));
-    col      = mix(col,  core,   smoothstep(0.65, 0.92, fire));
+    vec3 col = mix(restCol, barCol, litFactor);
 
     float alpha = smoothstep(0.12, 0.44, fire) * density;
 
-    gl_FragColor = vec4(col * 1.3, alpha);
+    gl_FragColor = vec4(col * 1.25, alpha);
   }
 `
