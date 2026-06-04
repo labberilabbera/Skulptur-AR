@@ -132,9 +132,12 @@ ecs.registerComponent({
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
         })
         fireMat.userData.height = height  // sparas så tick kan räkna om utblåsning live
-        const fireMesh = child.clone()
-        fireMesh.material = fireMat
-        fireMesh.scale.multiplyScalar(1.02)
+        // Skapa en ny mesh istället för child.clone() — klon kopierar userData
+        // som kan innehålla ett BigInt (entitets-id) → JSON-serialiseringskrasch.
+        const fireMesh = new THREE.Mesh(child.geometry, fireMat)
+        fireMesh.position.copy(child.position)
+        fireMesh.quaternion.copy(child.quaternion)
+        fireMesh.scale.copy(child.scale).multiplyScalar(1.02)
         fireMesh.renderOrder = 998
         child.parent.add(fireMesh)
         world.three.notifyChanged(fireMesh)

@@ -173,17 +173,24 @@
           "id": "a03f69c9-9786-4013-befd-8e44e87b6753",
           "name": "world-anchor",
           "parameters": {}
+        },
+        "beb7fa2a-8c6e-4311-ad4d-db20a26d3559": {
+          "id": "beb7fa2a-8c6e-4311-ad4d-db20a26d3559",
+          "name": "sculpture-fire",
+          "parameters": {
+            "p1Count": 2
+          }
         }
       },
       "gltfModel": {
         "src": {
           "type": "asset",
-          "asset": "assets/frkolnad_kvinna_.glb"
+          "asset": "assets/sculpture.glb"
         },
         "animationClip": "",
         "loop": true
       },
-      "name": "frkolnad_kvinna_.glb",
+      "name": "sculpture",
       "order": 1.6751674722496983
     },
     "35e50333-496b-4cbb-b946-5c06584b97ba": {
@@ -213,15 +220,16 @@
           "name": "ember-glow",
           "parameters": {
             "speed": 1,
-            "audioReact": 1,
-            "boost": 1
+            "audioReact": 0.4,
+            "boost": 3,
+            "expand": 0.02
           }
         }
       },
       "gltfModel": {
         "src": {
           "type": "asset",
-          "asset": "assets/eld_textur.glb"
+          "asset": "assets/eld-textur.glb"
         },
         "animationClip": "",
         "loop": true
