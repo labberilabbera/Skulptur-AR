@@ -1,19 +1,24 @@
 export const fireVertexShader = /* glsl */ `
-  uniform float uModelYMin;
-  uniform float uModelYMax;
+  uniform float uWorldYMin;   // modellens lägsta/högsta Y i VÄRLDEN (sätts i JS)
+  uniform float uWorldYMax;
   uniform float uInflate;     // hur långt eldskalet blåses ut längs normalen (modell-enheter)
 
   varying vec2  vUv;
-  varying float vYNorm;       // 0 = ben, 1 = huvud
+  varying float vYNorm;       // 0 = ben (lägst i världen), 1 = huvud (högst)
   varying float vFresnel;     // 0 = ytan mot kameran, 1 = silhuettkant
 
   void main() {
     vUv = uv;
-    vYNorm = clamp((position.y - uModelYMin) / max(uModelYMax - uModelYMin, 0.001), 0.0, 1.0);
 
     // ── Blås ut skalet längs normalen → elden blir större än skulpturen ──────
     vec3 inflated = position + normal * uInflate;
-    vec4 mvPos    = modelViewMatrix * vec4(inflated, 1.0);
+    vec4 wpos     = modelMatrix * vec4(inflated, 1.0);
+
+    // VU-bar mappas mot VÄRLDENS upp-riktning, så den reser sig rakt upp oavsett
+    // hur modellen är roterad/skalad.
+    vYNorm = clamp((wpos.y - uWorldYMin) / max(uWorldYMax - uWorldYMin, 0.001), 0.0, 1.0);
+
+    vec4 mvPos = viewMatrix * wpos;
 
     // ── Fresnel: ytor som pekar bort från kameran (silhuetten) får mjuk glöd ─
     vec3 viewNormal = normalize(normalMatrix * normal);

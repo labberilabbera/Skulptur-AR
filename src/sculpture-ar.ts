@@ -179,8 +179,8 @@ ecs.registerComponent({
             time:        {value: 0},
             density:     {value: s.density},
             uAudioLevel: {value: 0},
-            uModelYMin:  {value: yMin},
-            uModelYMax:  {value: yMax},
+            uWorldYMin:  {value: yMin},   // uppdateras i tick (världsrymd)
+            uWorldYMax:  {value: yMax},
             uInflate:    {value: height * s.inflate},
             uSoftness:   {value: s.softness},
             uFeather:    {value: s.feather},
@@ -189,6 +189,7 @@ ecs.registerComponent({
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
         })
         fireMat.userData.height = height  // sparas så tick kan räkna om utblåsning live
+        if (bb) { fireMat.userData.bbMin = bb.min.clone(); fireMat.userData.bbMax = bb.max.clone() }
         // Skapa en ny mesh istället för child.clone() — klon kopierar userData
         // som kan innehålla ett BigInt (entitets-id) → JSON-serialiseringskrasch.
         const fireMesh = new THREE.Mesh(child.geometry, fireMat)
@@ -198,6 +199,7 @@ ecs.registerComponent({
         fireMesh.renderOrder = 998
         child.parent.add(fireMesh)
         world.three.notifyChanged(fireMesh)
+        fireMat.userData.mesh = fireMesh   // för att räkna om världs-Y i tick
         fireMats.push(fireMat)
         createdObjs.push(fireMesh)
 
@@ -312,6 +314,7 @@ ecs.registerComponent({
     // ── Uppdatera kroppens eldmaterial ──────────────────────────────────────
     const fireMats = fireMatsMap.get(component.eid)
     if (fireMats) {
+      const _v = THREE ? new THREE.Vector3() : null
       for (const mat of fireMats) {
         mat.uniforms.time.value        = t * s.speed
         mat.uniforms.density.value     = s.density
@@ -319,6 +322,22 @@ ecs.registerComponent({
         mat.uniforms.uInflate.value    = (mat.userData.height ?? 1) * s.inflate
         mat.uniforms.uSoftness.value   = s.softness
         mat.uniforms.uFeather.value    = s.feather
+
+        // Räkna om modellens Y-spann i VÄRLDEN (så VU-baren reser sig rakt upp
+        // även när modellen är roterad). 8 hörn av bounding box → billigt.
+        const mesh = mat.userData.mesh, bbMin = mat.userData.bbMin, bbMax = mat.userData.bbMax
+        if (_v && mesh && bbMin && bbMax) {
+          if (mesh.updateWorldMatrix) mesh.updateWorldMatrix(true, false)
+          const mw = mesh.matrixWorld
+          let wmin = Infinity, wmax = -Infinity
+          for (let xi = 0; xi < 2; xi++) for (let yi = 0; yi < 2; yi++) for (let zi = 0; zi < 2; zi++) {
+            _v.set(xi ? bbMax.x : bbMin.x, yi ? bbMax.y : bbMin.y, zi ? bbMax.z : bbMin.z).applyMatrix4(mw)
+            if (_v.y < wmin) wmin = _v.y
+            if (_v.y > wmax) wmax = _v.y
+          }
+          mat.uniforms.uWorldYMin.value = wmin
+          mat.uniforms.uWorldYMax.value = wmax
+        }
       }
     }
 
