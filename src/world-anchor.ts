@@ -41,6 +41,41 @@ ecs.registerComponent({
 
     const locked = lockedMap.get(eid) ?? false
 
+    // Exponera kalibrerings-API (flytta/rotera/skala live) första gången
+    // three.js-objektet finns. Justerar objektets LOKALA transform = exakt de
+    // värden som skrivs in i Studios Position/Rotation/Scale.
+    const obj0 = world.three.entityToObject.get(eid)
+    if (obj0 && !(window as any)._anchorApi) {
+      const w = world
+      const rad = (d: number) => d * Math.PI / 180
+      ;(window as any)._anchorApi = {
+        nudgePos: (dx: number, dy: number, dz: number) => {
+          obj0.position.x += dx; obj0.position.y += dy; obj0.position.z += dz
+          w.three.notifyChanged(obj0)
+        },
+        nudgeRot: (ax: string, deg: number) => {
+          if (ax === 'x') obj0.rotateX(rad(deg))
+          else if (ax === 'y') obj0.rotateY(rad(deg))
+          else obj0.rotateZ(rad(deg))
+          w.three.notifyChanged(obj0)
+        },
+        scaleBy: (f: number) => {
+          obj0.scale.multiplyScalar(f)
+          w.three.notifyChanged(obj0)
+        },
+        read: () => {
+          const e = obj0.rotation
+          const d = (r: number) => Math.round(r * 180 / Math.PI * 10) / 10
+          const n = (v: number) => Math.round(v * 1000) / 1000
+          return {
+            pos:   [n(obj0.position.x), n(obj0.position.y), n(obj0.position.z)],
+            rot:   [d(e.x), d(e.y), d(e.z)],
+            scale: n(obj0.scale.x),
+          }
+        },
+      }
+    }
+
     // Är bildmålet just nu spårat? (sätts av pipeline-lyssnaren i index.html)
     // Om targetName är tomt: lås på vilket bildmål som helst som hittas.
     const state = (window as any)._imageTargetState || {}
@@ -59,6 +94,10 @@ ecs.registerComponent({
       err: (window as any)._anchorStatus?.err,
     }
     ;(window as any)._anchorStatus = status
+
+    // I kalibreringsläge: lås aldrig — stå kvar mot markören så att nudge-
+    // justeringarna ändrar den lokala offseten (= Studio-värdena).
+    if ((window as any)._calibrateMode) { status.target = 'KALIBRERING'; return }
 
     if (locked && !s.relock) return
 

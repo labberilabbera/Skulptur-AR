@@ -220,6 +220,27 @@
   #restart-btn:active {
     background: rgba(255, 160, 40, 0.2);
   }
+
+  /* ── Kalibreringspanel (visas bara med ?calibrate=1) ─────────────── */
+  #calib {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30000;
+    background: rgba(0,0,0,0.80); color: #fff;
+    font: 13px system-ui, sans-serif; padding: 10px 12px 18px;
+    display: none; backdrop-filter: blur(6px);
+  }
+  #calib.visible { display: block; }
+  #calib .row { display: flex; align-items: center; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  #calib .lbl { width: 52px; opacity: 0.75; font-size: 12px; }
+  #calib button {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; border-radius: 8px; padding: 10px 12px; font-size: 14px; min-width: 42px;
+  }
+  #calib button:active { background: rgba(255,160,40,0.4); }
+  #calib #step-btn.hot { background: rgba(255,160,40,0.35); border-color: rgba(255,160,40,0.8); }
+  #calib .read {
+    margin-top: 10px; font: 12px monospace; color: #ffb060; word-break: break-all;
+    user-select: all; -webkit-user-select: all;
+  }
 </style>
 
 <!-- Startskärm -->
@@ -245,10 +266,30 @@
 <!-- Avsluta-knapp -->
 <button id="exit-btn" aria-label="Avsluta upplevelsen">&#10005;</button>
 
-<!-- Debug-status (world-anchor) -->
+<!-- Debug-status (world-anchor) — visas bara med ?debug=1 eller ?calibrate=1 -->
 <div id="debug-hud" style="position:fixed;top:0;left:0;right:0;z-index:30000;
   background:rgba(0,0,0,0.6);color:#0f0;font:12px monospace;padding:6px 10px;
-  text-align:center;pointer-events:none;">anchor: init…</div>
+  text-align:center;pointer-events:none;display:none;">anchor: init…</div>
+
+<!-- Kalibreringspanel (visas bara med ?calibrate=1) -->
+<div id="calib">
+  <div class="row"><span class="lbl">Flytta</span>
+    <button data-p="x-">X−</button><button data-p="x+">X+</button>
+    <button data-p="y-">Y−</button><button data-p="y+">Y+</button>
+    <button data-p="z-">Z−</button><button data-p="z+">Z+</button>
+  </div>
+  <div class="row"><span class="lbl">Rotera</span>
+    <button data-r="x-">X−</button><button data-r="x+">X+</button>
+    <button data-r="y-">Y−</button><button data-r="y+">Y+</button>
+    <button data-r="z-">Z−</button><button data-r="z+">Z+</button>
+  </div>
+  <div class="row"><span class="lbl">Skala</span>
+    <button data-s="-">−</button><button data-s="+">+</button>
+    <span class="lbl" style="width:auto;margin-left:14px">Steg</span>
+    <button id="step-btn">1×</button>
+  </div>
+  <div class="read" id="calib-read">pos … rot … scale …</div>
+</div>
 
 <!-- Slutskärm: uppmana att skanna nästa QR-kod -->
 <div id="end-screen">
@@ -352,10 +393,55 @@
 
   // Visa startskärmen först när kameran faktiskt visar bild (tillstånd beviljat),
   // och göm scan-overlayn när image target hittas.
+  // ── Kalibreringsläge + debug-HUD (aktiveras via URL) ──────────────────
+  const params      = location.search + location.hash
+  const calibrateOn = /calibrate/.test(params)
+  const debugOn     = calibrateOn || /debug/.test(params)
+
+  if (debugOn) document.getElementById('debug-hud').style.display = 'block'
+
+  if (calibrateOn) {
+    window._calibrateMode = true
+    const panel = document.getElementById('calib')
+    panel.classList.add('visible')
+
+    const POS = 0.01, ROT = 1, SCL = 1.02   // grundsteg: 1 cm, 1°, 2 %
+    let mult = 1
+    const stepBtn = document.getElementById('step-btn')
+    stepBtn.addEventListener('click', () => {
+      mult = mult === 1 ? 5 : (mult === 5 ? 20 : 1)
+      stepBtn.textContent = mult + '×'
+      stepBtn.classList.toggle('hot', mult !== 1)
+    })
+
+    const api = () => window._anchorApi
+    panel.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => {
+      if (!api()) return
+      const v = b.dataset.p, d = (v[1] === '+' ? 1 : -1) * POS * mult
+      api().nudgePos(v[0] === 'x' ? d : 0, v[0] === 'y' ? d : 0, v[0] === 'z' ? d : 0)
+    }))
+    panel.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
+      if (!api()) return
+      const v = b.dataset.r, d = (v[1] === '+' ? 1 : -1) * ROT * mult
+      api().nudgeRot(v[0], d)
+    }))
+    panel.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => {
+      if (!api()) return
+      api().scaleBy(b.dataset.s === '+' ? Math.pow(SCL, mult) : 1 / Math.pow(SCL, mult))
+    }))
+
+    setInterval(() => {
+      if (!api()) return
+      const t = api().read()
+      document.getElementById('calib-read').textContent =
+        `Pos ${t.pos.join(', ')}   Rot ${t.rot.join(', ')}   Scale ${t.scale}`
+    }, 200)
+  }
+
   // Debug-HUD: visa world-anchor-status live på skärmen
   setInterval(() => {
     const hud = document.getElementById('debug-hud')
-    if (!hud) return
+    if (!hud || !debugOn) return
     const imgs = window._imageTargetState || {}
     const a    = window._anchorStatus || {}
     const seen = Object.keys(imgs).filter(k => imgs[k]).join(',') || '–'
