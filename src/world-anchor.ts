@@ -17,6 +17,13 @@ const hitsMap     = new Map<bigint, number>()
 const appliedMap  = new Map<bigint, boolean>()  // har sparad kalibrering applicerats
 const markerMatMap = new Map<bigint, any>()     // markörens (förälderns) world-pose vid låsning
 
+// Rotations-gizmo (en uppsättning ringar för det ankrade objektet)
+let gizmoGroup: any   = null
+let gizmoVisible      = false
+let gizmoGrabAxis: any = null
+let gizmoLastAngle    = 0
+let gizmoSign         = 1
+
 ecs.registerComponent({
   name: 'world-anchor',
 
@@ -85,6 +92,62 @@ ecs.registerComponent({
         rotateYaw:   (deg: number) => { obj0.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), rad(deg)); refresh() },
         rotatePitch: (deg: number) => { obj0.rotateOnWorldAxis(camVecs().right, rad(deg)); refresh() },
         scaleBy:     (f: number)   => { obj0.scale.multiplyScalar(f); refresh() },
+
+        // ── Rotations-gizmo: tre ringar (X röd, Y grön, Z blå) ──────────────
+        showGizmo: (on: boolean) => {
+          gizmoVisible = on
+          if (on && !gizmoGroup) {
+            gizmoGroup = new THREE.Group()
+            const mk = (color: number, axis: any, ex: number, ey: number, ez: number) => {
+              const geo = new THREE.TorusGeometry(1, 0.06, 12, 64)
+              const matl = new THREE.MeshBasicMaterial({color, transparent: true, opacity: 0.9, depthTest: false})
+              const m = new THREE.Mesh(geo, matl)
+              m.rotation.set(ex, ey, ez)
+              m.renderOrder = 10000
+              m.userData.axis = axis
+              return m
+            }
+            gizmoGroup.add(mk(0x4499ff, new THREE.Vector3(0, 0, 1), 0, 0, 0))             // Z blå (XY-plan)
+            gizmoGroup.add(mk(0xff5555, new THREE.Vector3(1, 0, 0), 0, Math.PI / 2, 0))   // X röd
+            gizmoGroup.add(mk(0x55ff77, new THREE.Vector3(0, 1, 0), Math.PI / 2, 0, 0))   // Y grön
+            w.three.scene.add(gizmoGroup)
+          }
+          if (gizmoGroup) gizmoGroup.visible = on
+        },
+        gizmoDown: (x: number, y: number) => {
+          if (!gizmoGroup || !gizmoVisible) return false
+          const cam = w.three.activeCamera as any
+          const ndc = new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1)
+          const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, cam)
+          gizmoGroup.updateWorldMatrix(true, true)
+          const hits = ray.intersectObjects(gizmoGroup.children, false)
+          if (!hits.length) { gizmoGrabAxis = null; return false }
+          gizmoGrabAxis = hits[0].object.userData.axis.clone()
+          const c = gizmoGroup.position.clone().project(cam)
+          const cx = (c.x * 0.5 + 0.5) * window.innerWidth
+          const cy = (-c.y * 0.5 + 0.5) * window.innerHeight
+          gizmoLastAngle = Math.atan2(y - cy, x - cx)
+          const camPos = new THREE.Vector3(); cam.getWorldPosition(camPos)
+          const toCam = camPos.sub(gizmoGroup.position).normalize()
+          gizmoSign = (gizmoGrabAxis.dot(toCam) >= 0) ? -1 : 1
+          return true
+        },
+        gizmoMove: (x: number, y: number) => {
+          if (!gizmoGrabAxis) return
+          const cam = w.three.activeCamera as any
+          const c = gizmoGroup.position.clone().project(cam)
+          const cx = (c.x * 0.5 + 0.5) * window.innerWidth
+          const cy = (-c.y * 0.5 + 0.5) * window.innerHeight
+          let ang = Math.atan2(y - cy, x - cx)
+          let delta = ang - gizmoLastAngle
+          if (delta >  Math.PI) delta -= 2 * Math.PI
+          if (delta < -Math.PI) delta += 2 * Math.PI
+          gizmoLastAngle = ang
+          obj0.rotateOnWorldAxis(gizmoGrabAxis, delta * gizmoSign)
+          refresh()
+        },
+        gizmoUp: () => { gizmoGrabAxis = null },
+
         read: () => {
           const d = (r: number) => Math.round(r * 180 / Math.PI * 10) / 10
           const n = (v: number) => Math.round(v * 1000) / 1000
@@ -108,6 +171,18 @@ ecs.registerComponent({
           }
         },
       }
+    }
+
+    // Positionera/skala rotations-gizmot vid objektet när det visas
+    if (THREE && obj0 && gizmoGroup && gizmoVisible) {
+      try {
+        const box = new THREE.Box3().setFromObject(obj0)
+        const sph = box.getBoundingSphere(new THREE.Sphere())
+        gizmoGroup.position.copy(sph.center)
+        gizmoGroup.scale.setScalar(Math.max(sph.radius * 1.25, 0.15))
+        if (typeof gizmoGroup.updateMatrix === 'function') gizmoGroup.updateMatrix()
+        world.three.notifyChanged(gizmoGroup)
+      } catch (e) { /* noop */ }
     }
 
     // Applicera sparad kalibrering (från servern) en gång när objektet finns.

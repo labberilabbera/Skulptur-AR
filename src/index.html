@@ -242,7 +242,11 @@
     user-select: all; -webkit-user-select: all;
   }
   #calib #calib-hint { font-size: 12px; opacity: 0.7; margin-bottom: 8px; text-align: center; }
-  #calib .tool { flex: 1; padding: 14px 8px; font-size: 15px; }
+  #calib .tool {
+    flex: 1; padding: 12px 8px; font-size: 13px; display: flex; flex-direction: column;
+    align-items: center; gap: 5px;
+  }
+  #calib .tool svg { width: 26px; height: 26px; }
   #calib .tool.active { background: rgba(255,160,40,0.4); border-color: rgba(255,160,40,0.9); }
   #calib #save-btn {
     flex: 1; background: rgba(255,160,40,0.25); border-color: rgba(255,160,40,0.8); padding: 14px;
@@ -291,9 +295,18 @@
 <div id="calib">
   <div id="calib-hint">Rikta mot markören tills <b>LÅST ✓</b>, dra sedan på skärmen.</div>
   <div class="row" id="tool-row">
-    <button class="tool active" data-tool="move">🖐 Flytta</button>
-    <button class="tool" data-tool="rotate">🔄 Rotera</button>
-    <button class="tool" data-tool="scale">⤢ Skala</button>
+    <button class="tool active" data-tool="move">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M12 2 9 5M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>
+      <span>Flytta</span>
+    </button>
+    <button class="tool" data-tool="rotate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
+      <span>Rotera</span>
+    </button>
+    <button class="tool" data-tool="scale">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l6 6M4 4v5M4 4h5M20 20l-6-6M20 20v-5M20 20h-5"/></svg>
+      <span>Skala</span>
+    </button>
   </div>
   <div class="read" id="calib-read">pos … rot … scale …</div>
   <div class="row" id="calib-save-row" style="display:none">
@@ -441,6 +454,7 @@
     document.querySelectorAll('#tool-row .tool').forEach(b => b.addEventListener('click', () => {
       tool = b.dataset.tool
       document.querySelectorAll('#tool-row .tool').forEach(x => x.classList.toggle('active', x === b))
+      if (api() && api().showGizmo) api().showGizmo(tool === 'rotate')  // visa ringar i rotationsläge
     }))
 
     // ── Drag-gester på gestlagret ─────────────────────────────────────────
@@ -453,8 +467,12 @@
     const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
 
     layer.addEventListener('touchstart', e => {
-      if (e.touches.length === 1) { last = {x: e.touches[0].clientX, y: e.touches[0].clientY} }
-      else if (e.touches.length === 2) {
+      const a = api()
+      if (e.touches.length === 1) {
+        const x = e.touches[0].clientX, y = e.touches[0].clientY
+        last = {x, y}
+        if (tool === 'rotate' && a && a.gizmoDown) a.gizmoDown(x, y)  // ta tag i en ring
+      } else if (e.touches.length === 2) {
         pinch = dist(e.touches[0], e.touches[1])
         twoY  = (e.touches[0].clientY + e.touches[1].clientY) / 2
         last = null
@@ -479,13 +497,14 @@
         const dx = x - last.x, dy = y - last.y
         last = {x, y}
         if (tool === 'move')        a.moveScreen(dx * MOVE_K, -dy * MOVE_K)
-        else if (tool === 'rotate') { a.rotateYaw(-dx * ROT_K); a.rotatePitch(-dy * ROT_K) }
+        else if (tool === 'rotate') a.gizmoMove(x, y)        // rotera kring greppad ring
         else if (tool === 'scale')  a.scaleBy(1 + (-dy) * SCL_K)
         e.preventDefault()
       }
     }, {passive: false})
 
     layer.addEventListener('touchend', e => {
+      const a = api(); if (a && a.gizmoUp) a.gizmoUp()
       if (e.touches.length === 0) { last = null; pinch = 0; twoY = null }
     })
 
