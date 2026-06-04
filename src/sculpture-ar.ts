@@ -161,6 +161,9 @@ ecs.registerComponent({
           depthWrite: false, depthTest: false,
         })
         const pts1 = new THREE.Points(geo1, pMat1)
+        pts1.position.copy(child.position)
+        pts1.quaternion.copy(child.quaternion)
+        pts1.scale.copy(child.scale)
         pts1.renderOrder = 999
         child.parent.add(pts1)
         world.three.notifyChanged(pts1)
@@ -181,6 +184,9 @@ ecs.registerComponent({
           depthWrite: false, depthTest: false,
         })
         const pts2 = new THREE.Points(geo2, pMat2)
+        pts2.position.copy(child.position)
+        pts2.quaternion.copy(child.quaternion)
+        pts2.scale.copy(child.scale)
         pts2.renderOrder = 999
         child.parent.add(pts2)
         world.three.notifyChanged(pts2)

@@ -178,7 +178,8 @@
           "id": "beb7fa2a-8c6e-4311-ad4d-db20a26d3559",
           "name": "sculpture-fire",
           "parameters": {
-            "p1Count": 2
+            "p1Count": 2,
+            "showModel": true
           }
         }
       },
