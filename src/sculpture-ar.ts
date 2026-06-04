@@ -98,6 +98,7 @@ ecs.registerComponent({
       const p1Mats:   any[] = []
       const p2Mats:   any[] = []
       const origMeshes: any[] = []
+      let diag = ''
 
       model.traverse((child: any) => {
         if (!child.isMesh) return
@@ -143,8 +144,14 @@ ecs.registerComponent({
         world.three.notifyChanged(fireMesh)
         fireMats.push(fireMat)
 
-        const pa = child.geometry?.attributes?.position
-        if (!pa) return
+        const geo = child.geometry
+        const pa  = geo && typeof geo.getAttribute === 'function'
+          ? geo.getAttribute('position')
+          : (geo && geo.attributes ? geo.attributes.position : null)
+        if (!pa) {
+          diag = `skip: geo=${!!geo} getAttr=${!!(geo && geo.getAttribute)} attrs=${geo && geo.attributes ? Object.keys(geo.attributes).join(',') : '-'}`
+          return
+        }
 
         // ── Particle layer 1 ──────────────────────────────────────────────────
         const geo1  = makeParticleGeo(pa, 200)
@@ -197,7 +204,7 @@ ecs.registerComponent({
       p1MatsMap.set(component.eid, p1Mats)
       p2MatsMap.set(component.eid, p2Mats)
       origMeshMap.set(component.eid, origMeshes)
-      const msg = `[sculpture-fire] ytor: ${fireMats.length} | partiklar p1: ${p1Mats.length} p2: ${p2Mats.length}`
+      const msg = `[sculpture-fire] ytor: ${fireMats.length} | partiklar p1: ${p1Mats.length} p2: ${p2Mats.length} | ${diag}`
       console.log(msg)
       // Tillfällig status på skärmen (tas bort när vi löst partikelproblemet)
       try {
