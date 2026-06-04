@@ -8,10 +8,14 @@ import * as ecs from '@8thwall/ecs'
 // tränger glöden igenom. Lägg glöd-modellen ovanpå/överlappande den förkolnade.
 
 const glowVertexShader = /* glsl */ `
+  uniform float uExpand;    // hur långt skalet blåses ut (modell-enheter)
+  uniform float uAudio;     // 0 = tyst, 1 = peak — driver utblåsningen
   varying vec2 vUv;
   void main() {
     vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    // På musikens toppar växer glöd-skalet utanför kol-modellen
+    vec3 p = position + normal * (uExpand * uAudio);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   }
 `
 
@@ -65,11 +69,13 @@ ecs.registerComponent({
     speed:      ecs.f32,   // andnings-/flödeshastighet
     boost:      ecs.f32,   // generell ljusstyrka
     audioReact: ecs.f32,   // hur mycket musiken driver glöden
+    expand:     ecs.f32,   // hur mycket glöden växer utanför kol-modellen på toppar (andel av höjd)
   },
   schemaDefaults: {
     speed:      1.0,
     boost:      1.0,
     audioReact: 1.2,
+    expand:     0.03,
   },
   data: {},
 
@@ -91,14 +97,21 @@ ecs.registerComponent({
         const tex = srcMat && srcMat.map ? srcMat.map : null
         if (!tex) { console.warn('[ember-glow] mesh saknar textur'); return }
 
+        // Säkra normaler (behövs för utblåsningen) + räkna ut höjd för skalan
+        if (!child.geometry.attributes.normal) child.geometry.computeVertexNormals()
+        child.geometry.computeBoundingBox()
+        const bb = child.geometry.boundingBox
+        const height = bb ? Math.max(bb.max.y - bb.min.y, 0.001) : 1
+
         const mat = new THREE.ShaderMaterial({
           vertexShader: glowVertexShader,
           fragmentShader: glowFragmentShader,
           uniforms: {
-            tGlow:  {value: tex},
-            time:   {value: 0},
-            uAudio: {value: 0},
-            uBoost: {value: component.schema.boost},
+            tGlow:   {value: tex},
+            time:    {value: 0},
+            uAudio:  {value: 0},
+            uBoost:  {value: component.schema.boost},
+            uExpand: {value: 0},
           },
           transparent: true,
           blending: THREE.AdditiveBlending,
@@ -109,6 +122,7 @@ ecs.registerComponent({
           polygonOffsetFactor: -1,
           polygonOffsetUnits: -1,
         })
+        mat.userData.height = height
         child.material = mat
         child.renderOrder = 997
         world.three.notifyChanged(child)
@@ -146,9 +160,10 @@ ecs.registerComponent({
     audioSmoothMap.set(component.eid, smooth)
 
     for (const mat of mats) {
-      mat.uniforms.time.value   = t
-      mat.uniforms.uAudio.value = smooth
-      mat.uniforms.uBoost.value = s.boost
+      mat.uniforms.time.value    = t
+      mat.uniforms.uAudio.value  = smooth
+      mat.uniforms.uBoost.value  = s.boost
+      mat.uniforms.uExpand.value = (mat.userData.height || 1) * s.expand
     }
   },
 
