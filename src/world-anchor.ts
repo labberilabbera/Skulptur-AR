@@ -73,29 +73,29 @@ ecs.registerComponent({
     status.hits = hits
     if (hits < threshold) return
 
-    // Frys i world space: läs nuvarande world-transform (bildmålet har redan
-    // placerat oss med rätt offset) och lossa från bildmålet.
-    const e = world.eidToEntity.get(eid)
-    if (!e) { status.err = 'ingen entity'; return }
+    // Frys i world space genom att reparenta three.js-objektet direkt med
+    // scene.attach() — det bevarar world-transformen (position/rotation/skala)
+    // och lossar objektet från bildmålet i three.js-grafen, så bildmålets
+    // rörelser inte längre påverkar det. SLAM håller det sedan stadigt.
+    const obj   = world.three.entityToObject.get(eid)
+    const scene = world.three.scene
+    if (!obj)   { status.err = 'inget 3d-objekt'; return }
+    if (!scene) { status.err = 'ingen scen';      return }
     try {
-      const wp = e.getWorldPosition()
-      const wq = e.getWorldQuaternion()
-      const p  = {x: wp.x, y: wp.y, z: wp.z}
-      const q  = {x: wq.x, y: wq.y, z: wq.z, w: wq.w}
-
-      e.setParent(null)            // lossa till scenens rot (world space)
-      e.setWorldPosition(p)
-      e.setWorldQuaternion(q)
-      if (typeof e.show === 'function') e.show()
-
-      const obj = world.three.entityToObject.get(eid)
-      if (obj) world.three.notifyChanged(obj)
+      if (typeof (scene as any).attach === 'function') {
+        ;(scene as any).attach(obj)        // bevarar world-transform
+      } else if (obj.parent) {
+        obj.parent.remove(obj)
+        scene.add(obj)
+      }
+      obj.visible = true
+      world.three.notifyChanged(obj)
 
       lockedMap.set(eid, true)
       hitsMap.set(eid, 0)
       status.locked = true
       status.err = undefined
-      console.log('[world-anchor] låst i world space mot', s.targetName)
+      console.log('[world-anchor] låst i world space')
     } catch (err: any) {
       status.err = String((err && err.message) || err)
       console.warn('[world-anchor] kunde inte låsa:', err)
