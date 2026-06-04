@@ -197,8 +197,20 @@ ecs.registerComponent({
       p1MatsMap.set(component.eid, p1Mats)
       p2MatsMap.set(component.eid, p2Mats)
       origMeshMap.set(component.eid, origMeshes)
-      console.log('[sculpture-fire] klar — ytor:', fireMats.length,
-        '| partiklar p1:', p1Mats.length, 'p2:', p2Mats.length)
+      const msg = `[sculpture-fire] ytor: ${fireMats.length} | partiklar p1: ${p1Mats.length} p2: ${p2Mats.length}`
+      console.log(msg)
+      // Tillfällig status på skärmen (tas bort när vi löst partikelproblemet)
+      try {
+        let el = document.getElementById('fire-status')
+        if (!el) {
+          el = document.createElement('div')
+          el.id = 'fire-status'
+          el.style.cssText = 'position:fixed;top:0;right:0;z-index:40000;background:rgba(0,0,0,0.7);' +
+            'color:#0f0;font:11px monospace;padding:4px 8px;pointer-events:none'
+          document.body.appendChild(el)
+        }
+        el.textContent = msg
+      } catch (e) { /* noop */ }
     }
 
     const onLoaded = (e: any) => applyFire(e.data.model)

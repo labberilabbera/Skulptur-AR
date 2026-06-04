@@ -179,7 +179,8 @@
           "name": "sculpture-fire",
           "parameters": {
             "p1Count": 2,
-            "showModel": true
+            "showModel": true,
+            "density": 3
           }
         }
       },
