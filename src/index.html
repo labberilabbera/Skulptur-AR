@@ -226,8 +226,8 @@
       // reality.ready hann före load-eventet — visa startskärmen nu
       window._revealStartScreen()
     } else {
-      // Säkerhetsnät: visa startskärmen ändå om reality.ready uteblir
-      setTimeout(() => window._revealStartScreen && window._revealStartScreen(), 9000)
+      // Säkerhetsnät: visa startskärmen ändå om kamera-callbacket uteblir
+      setTimeout(() => window._revealStartScreen && window._revealStartScreen(), 5000)
     }
 
     // Musik-knapp — pausa/spela
@@ -246,21 +246,20 @@
     })
   })
 
-  // Visa scan-overlayn först när kameran är igång (efter att tillstånd getts),
-  // och göm den när image target hittas.
+  // Visa startskärmen först när kameran faktiskt visar bild (tillstånd beviljat),
+  // och göm scan-overlayn när image target hittas.
   window.addEventListener('xrloaded', () => {
     XR8.addCameraPipelineModule({
       name: 'ar-overlay-module',
+      // Pålitligt "kameran är redo"-callback: status 'hasVideo' = livebild igång,
+      // vilket bara händer efter att kameratillstånd beviljats.
+      onCameraStatusChange: ({status}) => {
+        if (status === 'hasVideo') {
+          cameraReady = true
+          if (window._revealStartScreen) window._revealStartScreen()
+        }
+      },
       listeners: [
-        {
-          // Kameran är uppe och behörighet beviljad — nu är det säkert att
-          // visa startskärmen utan att täcka tillåt-dialogen.
-          event: 'reality.ready',
-          process: () => {
-            cameraReady = true
-            if (window._revealStartScreen) window._revealStartScreen()
-          },
-        },
         {
           event: 'reality.imagefound',
           process: ({detail}) => {
