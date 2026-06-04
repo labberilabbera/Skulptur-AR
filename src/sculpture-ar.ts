@@ -6,6 +6,7 @@ const fireMatsMap     = new Map<bigint, any[]>()
 const p1MatsMap       = new Map<bigint, any[]>()
 const p2MatsMap       = new Map<bigint, any[]>()
 const origMeshMap     = new Map<bigint, any[]>()  // originalmeshes (den solida modellen) för att kunna dölja/visa
+const createdObjMap   = new Map<bigint, any[]>()  // skapade eld-/partikel-objekt, för städning vid remove
 const gltfListenerMap = new Map<bigint, (e: any) => void>()
 const setupDoneMap    = new Map<bigint, boolean>()
 
@@ -13,6 +14,19 @@ let THREE: any = null
 
 // Smoothing state per entity för audio shift — undviker jittriga skift
 const audioShiftSmoothMap = new Map<bigint, number>()
+
+// Ta bort tidigare skapade eld-/partikel-objekt (förhindrar dubbletter vid
+// re-init/hot-reload). Rör INTE geometrin (eld-meshen delar modellens geometri).
+const cleanupCreated = (eid: bigint) => {
+  const objs = createdObjMap.get(eid)
+  if (objs) {
+    for (const o of objs) {
+      if (o.parent) o.parent.remove(o)
+      try { if (o.material && o.material.dispose) o.material.dispose() } catch (e) { /* */ }
+    }
+  }
+  createdObjMap.delete(eid)
+}
 
 ecs.registerComponent({
   name: 'sculpture-fire',
@@ -131,6 +145,7 @@ ecs.registerComponent({
 
     const applyFire = (model: any) => {
       if (setupDoneMap.get(component.eid)) return
+      cleanupCreated(component.eid)   // ta bort ev. gamla objekt från tidigare körning
       setupDoneMap.set(component.eid, true)
 
       const s = component.schema
@@ -138,6 +153,7 @@ ecs.registerComponent({
       const p1Mats:   any[] = []
       const p2Mats:   any[] = []
       const origMeshes: any[] = []
+      const createdObjs: any[] = []   // eld-/partikel-objekt att städa vid remove
       let diag = ''
 
       model.traverse((child: any) => {
@@ -183,6 +199,7 @@ ecs.registerComponent({
         child.parent.add(fireMesh)
         world.three.notifyChanged(fireMesh)
         fireMats.push(fireMat)
+        createdObjs.push(fireMesh)
 
         const geo = child.geometry
         const ga  = geo && geo.attributes
@@ -219,6 +236,7 @@ ecs.registerComponent({
         child.parent.add(pts1)
         world.three.notifyChanged(pts1)
         p1Mats.push(pMat1)
+        createdObjs.push(pts1)
 
         // ── Particle layer 2 ──────────────────────────────────────────────────
         const geo2  = pa ? makeParticleGeo(pa, 150) : makeParticleGeoFromBox(box, 150)
@@ -242,26 +260,15 @@ ecs.registerComponent({
         child.parent.add(pts2)
         world.three.notifyChanged(pts2)
         p2Mats.push(pMat2)
+        createdObjs.push(pts2)
       })
 
+      createdObjMap.set(component.eid, createdObjs)
       fireMatsMap.set(component.eid, fireMats)
       p1MatsMap.set(component.eid, p1Mats)
       p2MatsMap.set(component.eid, p2Mats)
       origMeshMap.set(component.eid, origMeshes)
-      const msg = `[sculpture-fire] ytor: ${fireMats.length} | partiklar p1: ${p1Mats.length} p2: ${p2Mats.length} | ${diag}`
-      console.log(msg)
-      // Tillfällig status på skärmen (tas bort när vi löst partikelproblemet)
-      try {
-        let el = document.getElementById('fire-status')
-        if (!el) {
-          el = document.createElement('div')
-          el.id = 'fire-status'
-          el.style.cssText = 'position:fixed;top:0;right:0;z-index:40000;background:rgba(0,0,0,0.7);' +
-            'color:#0f0;font:11px monospace;padding:4px 8px;pointer-events:none'
-          document.body.appendChild(el)
-        }
-        el.textContent = msg
-      } catch (e) { /* noop */ }
+      console.log(`[sculpture-fire] ytor: ${fireMats.length} | partiklar p1: ${p1Mats.length} p2: ${p2Mats.length} | ${diag}`)
     }
 
     const onLoaded = (e: any) => applyFire(e.data.model)
@@ -345,6 +352,7 @@ ecs.registerComponent({
       world.events.removeListener(component.eid, ecs.events.GLTF_MODEL_LOADED, listener)
       gltfListenerMap.delete(component.eid)
     }
+    cleanupCreated(component.eid)   // ta bort skapade eld-/partikel-objekt från scenen
     fireMatsMap.delete(component.eid)
     p1MatsMap.delete(component.eid)
     p2MatsMap.delete(component.eid)
