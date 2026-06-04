@@ -40,7 +40,6 @@ ecs.registerComponent({
     const s   = component.schema
 
     const locked = lockedMap.get(eid) ?? false
-    if (locked && !s.relock) return
 
     // Är bildmålet just nu spårat? (sätts av pipeline-lyssnaren i index.html)
     // Om targetName är tomt: lås på vilket bildmål som helst som hittas.
@@ -49,6 +48,16 @@ ecs.registerComponent({
     const found = name
       ? !!state[name]
       : Object.keys(state).some(k => state[k] === true)
+
+    // Rapportera status till debug-HUD på skärmen
+    ;(window as any)._anchorStatus = {
+      found,
+      hits:   hitsMap.get(eid) ?? 0,
+      locked,
+      target: name || '(any)',
+    }
+
+    if (locked && !s.relock) return
 
     if (!found) {
       hitsMap.set(eid, 0)
