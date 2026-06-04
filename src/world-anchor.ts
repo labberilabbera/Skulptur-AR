@@ -43,8 +43,12 @@ ecs.registerComponent({
     if (locked && !s.relock) return
 
     // Är bildmålet just nu spårat? (sätts av pipeline-lyssnaren i index.html)
-    const state = (window as any)._imageTargetState
-    const found = !!(state && state[s.targetName])
+    // Om targetName är tomt: lås på vilket bildmål som helst som hittas.
+    const state = (window as any)._imageTargetState || {}
+    const name  = (s.targetName || '').trim()
+    const found = name
+      ? !!state[name]
+      : Object.keys(state).some(k => state[k] === true)
 
     if (!found) {
       hitsMap.set(eid, 0)
