@@ -12,8 +12,9 @@ import * as ecs from '@8thwall/ecs'
 // namn ("fram"). Offseten (markör bredvid → eld på skulpturen) ställs in genom
 // objektets vanliga position/rotation relativt ImageTarget i editorn.
 
-const lockedMap = new Map<bigint, boolean>()
-const hitsMap   = new Map<bigint, number>()
+const lockedMap  = new Map<bigint, boolean>()
+const hitsMap    = new Map<bigint, number>()
+const appliedMap = new Map<bigint, boolean>()  // har sparad kalibrering applicerats
 
 ecs.registerComponent({
   name: 'world-anchor',
@@ -74,6 +75,23 @@ ecs.registerComponent({
           }
         },
       }
+    }
+
+    // Applicera sparad kalibrering (från servern) en gång när objektet finns.
+    // Sätter den LOKALA transformen = exakt det admin sparat.
+    const saved = (window as any)._savedCalibration
+    if (obj0 && saved && !appliedMap.get(eid)) {
+      try {
+        if (Array.isArray(saved.pos))   obj0.position.set(saved.pos[0], saved.pos[1], saved.pos[2])
+        if (Array.isArray(saved.rot)) {
+          const r = (d: number) => d * Math.PI / 180
+          obj0.rotation.set(r(saved.rot[0]), r(saved.rot[1]), r(saved.rot[2]))
+        }
+        if (typeof saved.scale === 'number') obj0.scale.setScalar(saved.scale)
+        world.three.notifyChanged(obj0)
+        appliedMap.set(eid, true)
+        console.log('[world-anchor] applicerade sparad kalibrering')
+      } catch (e) { /* noop */ }
     }
 
     // Är bildmålet just nu spårat? (sätts av pipeline-lyssnaren i index.html)
@@ -144,5 +162,6 @@ ecs.registerComponent({
   remove: (world, component) => {
     lockedMap.delete(component.eid)
     hitsMap.delete(component.eid)
+    appliedMap.delete(component.eid)
   },
 })
