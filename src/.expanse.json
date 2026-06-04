@@ -215,8 +215,9 @@
           "parameters": {
             "speed": 0.3,
             "audioReact": 2,
-            "boost": 1,
-            "expand": 0.01
+            "boost": 0.1,
+            "expand": 0.01,
+            "enabled": false
           }
         },
         "4a61a2a0-c2e3-4303-8fef-2c7ee4c2ceca": {
@@ -226,13 +227,18 @@
             "inflate": 0,
             "showModel": true,
             "softness": 0,
-            "density": 0.2,
-            "audioReact": 0.1,
-            "p1Size": 20,
+            "density": 0.6,
+            "audioReact": 0.3,
+            "p1Size": 15,
             "p2Rise": 2,
             "speed": 0.01,
-            "p1Speed": 0.01,
-            "feather": 0
+            "p1Speed": 0.002,
+            "feather": 0,
+            "p1Rise": 3,
+            "p2Speed": 0.003,
+            "p2Size": 7,
+            "p2Count": 0.5,
+            "enabled": true
           }
         }
       },

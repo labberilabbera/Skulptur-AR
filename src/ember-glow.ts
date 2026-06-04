@@ -24,6 +24,7 @@ const glowFragmentShader = /* glsl */ `
   uniform float time;
   uniform float uAudio;     // 0 = tyst, 1 = peak
   uniform float uBoost;     // generell ljusstyrka
+  uniform float uEnabled;   // 0 = avstängd (ingen glöd)
   varying vec2 vUv;
 
   // enkel värdebrus för flimmer i glöden
@@ -51,7 +52,7 @@ const glowFragmentShader = /* glsl */ `
     // glödhett kärnsken mot vit-orange vid musikens toppar
     col += vec3(1.0, 0.5, 0.15) * lum * uAudio * 1.2;
 
-    gl_FragColor = vec4(col, 1.0);
+    gl_FragColor = vec4(col * uEnabled, 1.0);
   }
 `
 
@@ -66,12 +67,14 @@ ecs.registerComponent({
   name: 'ember-glow',
 
   schema: {
+    enabled:    ecs.boolean,  // av = stäng av glöden
     speed:      ecs.f32,   // andnings-/flödeshastighet
     boost:      ecs.f32,   // generell ljusstyrka
     audioReact: ecs.f32,   // hur mycket musiken driver glöden
     expand:     ecs.f32,   // hur mycket glöden växer utanför kol-modellen på toppar (andel av höjd)
   },
   schemaDefaults: {
+    enabled:    true,
     speed:      1.0,
     boost:      1.0,
     audioReact: 1.2,
@@ -107,11 +110,12 @@ ecs.registerComponent({
           vertexShader: glowVertexShader,
           fragmentShader: glowFragmentShader,
           uniforms: {
-            tGlow:   {value: tex},
-            time:    {value: 0},
-            uAudio:  {value: 0},
-            uBoost:  {value: component.schema.boost},
-            uExpand: {value: 0},
+            tGlow:    {value: tex},
+            time:     {value: 0},
+            uAudio:   {value: 0},
+            uBoost:   {value: component.schema.boost},
+            uExpand:  {value: 0},
+            uEnabled: {value: 1},
           },
           transparent: true,
           blending: THREE.AdditiveBlending,
@@ -160,10 +164,11 @@ ecs.registerComponent({
     audioSmoothMap.set(component.eid, smooth)
 
     for (const mat of mats) {
-      mat.uniforms.time.value    = t
-      mat.uniforms.uAudio.value  = smooth
-      mat.uniforms.uBoost.value  = s.boost
-      mat.uniforms.uExpand.value = (mat.userData.height || 1) * s.expand
+      mat.uniforms.time.value     = t
+      mat.uniforms.uAudio.value   = smooth
+      mat.uniforms.uBoost.value   = s.boost
+      mat.uniforms.uExpand.value  = (mat.userData.height || 1) * s.expand
+      mat.uniforms.uEnabled.value = s.enabled ? 1 : 0
     }
   },
 

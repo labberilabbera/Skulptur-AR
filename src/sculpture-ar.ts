@@ -32,6 +32,7 @@ ecs.registerComponent({
   name: 'sculpture-fire',
 
   schema: {
+    enabled:    ecs.boolean,   // av = stäng av hela eld-effekten (ytor + partiklar)
     showModel:  ecs.boolean,   // visa den solida 3D-modellen under elden (av = bara effekter)
 
     inflate:    ecs.f32,       // hur mycket elden blåses ut utanför skulpturen (andel av höjd)
@@ -53,6 +54,7 @@ ecs.registerComponent({
     p2Rise:     ecs.f32,
   },
   schemaDefaults: {
+    enabled:    true,
     showModel:  true,
 
     inflate:    0.05,
@@ -284,6 +286,13 @@ ecs.registerComponent({
     const t  = world.time.elapsed
     const s  = component.schema
     const ad = (window as any).audioData
+
+    // ── På/av för hela eld-effekten (ytor + partiklar) ─────────────────────
+    const createdObjs = createdObjMap.get(component.eid)
+    if (createdObjs) {
+      for (const o of createdObjs) { if (o.visible !== s.enabled) o.visible = s.enabled }
+    }
+    if (!s.enabled) return
 
     // ── Audio-reaktiv VU-bar (enda audio-effekten) ─────────────────────────
     // Baren reser sig från benen mot huvudet med musiken — partiklar oberoende
