@@ -20,6 +20,10 @@ ecs.registerComponent({
   schema: {
     showModel:  ecs.boolean,   // visa den solida 3D-modellen under elden (av = bara effekter)
 
+    inflate:    ecs.f32,       // hur mycket elden blåses ut utanför skulpturen (andel av höjd)
+    softness:   ecs.f32,       // 0 = skarpa inre lågor, 1 = mjuka inre lågor
+    feather:    ecs.f32,       // 0 = skarp kontur, 1 = mjuk urtonad kant (Photoshop-feather)
+
     density:    ecs.f32,
     speed:      ecs.f32,
     audioReact: ecs.f32,
@@ -36,6 +40,10 @@ ecs.registerComponent({
   },
   schemaDefaults: {
     showModel:  true,
+
+    inflate:    0.05,
+    softness:   0.6,
+    feather:    0.5,
 
     density:    0.85,
     speed:      1.0,
@@ -97,11 +105,15 @@ ecs.registerComponent({
         // Spara originalmeshen så vi kan dölja/visa den solida modellen via showModel
         origMeshes.push(child)
 
+        // Säkra normaler — fresnel-glöd och utblåsning behöver dem
+        if (!child.geometry.attributes.normal) child.geometry.computeVertexNormals()
+
         // Räkna ut Y-min/max så shadern kan mappa varje vertex till 0-1 (ben→huvud)
         child.geometry.computeBoundingBox()
-        const bb   = child.geometry.boundingBox
-        const yMin = bb ? bb.min.y : -1
-        const yMax = bb ? bb.max.y :  1
+        const bb     = child.geometry.boundingBox
+        const yMin   = bb ? bb.min.y : -1
+        const yMax   = bb ? bb.max.y :  1
+        const height = Math.max(yMax - yMin, 0.001)  // modellhöjd för enhetsoberoende utblåsning
 
         // ── Surface fire med VU-bar ───────────────────────────────────────────
         const fireMat = new THREE.ShaderMaterial({
@@ -112,10 +124,14 @@ ecs.registerComponent({
             uAudioLevel: {value: 0},
             uModelYMin:  {value: yMin},
             uModelYMax:  {value: yMax},
+            uInflate:    {value: height * s.inflate},
+            uSoftness:   {value: s.softness},
+            uFeather:    {value: s.feather},
           },
           transparent: true, blending: THREE.AdditiveBlending,
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
         })
+        fireMat.userData.height = height  // sparas så tick kan räkna om utblåsning live
         const fireMesh = child.clone()
         fireMesh.material = fireMat
         fireMesh.scale.multiplyScalar(1.02)
@@ -220,6 +236,9 @@ ecs.registerComponent({
         mat.uniforms.time.value        = t * s.speed
         mat.uniforms.density.value     = s.density
         mat.uniforms.uAudioLevel.value = smooth
+        mat.uniforms.uInflate.value    = (mat.userData.height ?? 1) * s.inflate
+        mat.uniforms.uSoftness.value   = s.softness
+        mat.uniforms.uFeather.value    = s.feather
       }
     }
 

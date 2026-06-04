@@ -1,14 +1,26 @@
 export const fireVertexShader = /* glsl */ `
   uniform float uModelYMin;
   uniform float uModelYMax;
+  uniform float uInflate;     // hur långt eldskalet blåses ut längs normalen (modell-enheter)
 
   varying vec2  vUv;
-  varying float vYNorm;   // 0 = ben, 1 = huvud
+  varying float vYNorm;       // 0 = ben, 1 = huvud
+  varying float vFresnel;     // 0 = ytan mot kameran, 1 = silhuettkant
 
   void main() {
     vUv = uv;
     vYNorm = clamp((position.y - uModelYMin) / max(uModelYMax - uModelYMin, 0.001), 0.0, 1.0);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+    // ── Blås ut skalet längs normalen → elden blir större än skulpturen ──────
+    vec3 inflated = position + normal * uInflate;
+    vec4 mvPos    = modelViewMatrix * vec4(inflated, 1.0);
+
+    // ── Fresnel: ytor som pekar bort från kameran (silhuetten) får mjuk glöd ─
+    vec3 viewNormal = normalize(normalMatrix * normal);
+    vec3 viewDir    = normalize(-mvPos.xyz);
+    vFresnel = 1.0 - abs(dot(viewNormal, viewDir));
+
+    gl_Position = projectionMatrix * mvPos;
   }
 `
 
@@ -16,9 +28,12 @@ export const fireFragmentShader = /* glsl */ `
   uniform float time;
   uniform float density;
   uniform float uAudioLevel;  // 0 = tyst (helt lila), 1 = maxpeak (glödröd vid huvudet)
+  uniform float uSoftness;    // 0 = skarpa inre lågor, 1 = mjuka inre lågor
+  uniform float uFeather;     // 0 = skarp kontur, 1 = mjuk urtonad kant (feather)
 
   varying vec2  vUv;
   varying float vYNorm;
+  varying float vFresnel;
 
   vec2 hash2(vec2 p) {
     p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
@@ -88,7 +103,19 @@ export const fireFragmentShader = /* glsl */ `
     float overdrive = smoothstep(0.78, 1.0, uAudioLevel);
     col = mix(col, colGlowRed * 1.15, overdrive);
 
-    float alpha = smoothstep(0.12, 0.44, fire) * density;
+    // ── Inre flamm-mjukhet (uSoftness) ─────────────────────────────────────
+    // Breddar alfa-övergången i noise-texturen så de inre lågorna blir mjukare.
+    float edge0 = mix(0.18, 0.00, uSoftness);
+    float edge1 = mix(0.42, 0.90, uSoftness);
+    float baseAlpha = smoothstep(edge0, edge1, fire);
+
+    // ── Feather på konturen (uFeather) ─────────────────────────────────────
+    // Ytor i betraktningsvinkel (silhuetten) tonas mjukt ut mot transparent —
+    // precis som feather-verktyget i Photoshop. Bredare band = mjukare kant.
+    // uFeather 0 = skarp kontur, 1 = hela kanten urtonad.
+    float edgeFade = 1.0 - smoothstep(1.0 - clamp(uFeather, 0.001, 1.0), 1.0, vFresnel);
+
+    float alpha = baseAlpha * edgeFade * density;
 
     gl_FragColor = vec4(col * 1.25, alpha);
   }

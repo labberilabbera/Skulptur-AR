@@ -186,7 +186,10 @@
             "p2Size": 10,
             "p2Speed": 0.1,
             "p2Rise": 0.2,
-            "showModel": false
+            "showModel": false,
+            "inflate": 0.01,
+            "softness": 0,
+            "feather": 1
           }
         }
       },
