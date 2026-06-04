@@ -1,13 +1,13 @@
 {
   "type": "PLANAR",
   "properties": {
-    "top": 504,
+    "top": 252,
     "left": 0,
-    "width": 2268,
-    "height": 3024,
+    "width": 1134,
+    "height": 1512,
     "isRotated": false,
-    "originalWidth": 2268,
-    "originalHeight": 4032
+    "originalWidth": 1134,
+    "originalHeight": 2016
   },
   "imagePath": "image-targets/fram_luminance.jpg",
   "metadata": null,
@@ -18,6 +18,6 @@
     "thumbnailImage": "fram_thumbnail.jpg",
     "luminanceImage": "fram_luminance.jpg"
   },
-  "created": 1779461769993,
-  "updated": 1779461769993
+  "created": 1780558991775,
+  "updated": 1780559011229
 }
