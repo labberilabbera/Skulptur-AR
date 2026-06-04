@@ -197,7 +197,8 @@ ecs.registerComponent({
       p1MatsMap.set(component.eid, p1Mats)
       p2MatsMap.set(component.eid, p2Mats)
       origMeshMap.set(component.eid, origMeshes)
-      console.log('[sculpture-fire] klar — ytor:', fireMats.length)
+      console.log('[sculpture-fire] klar — ytor:', fireMats.length,
+        '| partiklar p1:', p1Mats.length, 'p2:', p2Mats.length)
     }
 
     const onLoaded = (e: any) => applyFire(e.data.model)
