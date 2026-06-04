@@ -46,29 +46,48 @@ ecs.registerComponent({
     // Exponera kalibrerings-API (flytta/rotera/skala live) första gången
     // three.js-objektet finns. Justerar objektets LOKALA transform = exakt de
     // värden som skrivs in i Studios Position/Rotation/Scale.
-    const obj0 = world.three.entityToObject.get(eid)
-    if (obj0 && !(window as any)._anchorApi) {
+    const obj0  = world.three.entityToObject.get(eid)
+    const THREE = (window as any).THREE
+    if (obj0 && THREE && !(window as any)._anchorApi) {
       const w = world
       const rad = (d: number) => d * Math.PI / 180
+
+      // Uppdatera matrisen explicit (manual matrix-läge renderar annars inte ändringen)
+      const refresh = () => {
+        if (typeof obj0.updateMatrix === 'function') obj0.updateMatrix()
+        w.three.notifyChanged(obj0)
+      }
+      // Kamera-relativa axlar (höger/upp/fram) — så "vänster" alltid är vänster i din vy
+      const camVecs = () => {
+        const cam = w.three.activeCamera as any
+        const q = new THREE.Quaternion()
+        if (cam && cam.getWorldQuaternion) cam.getWorldQuaternion(q)
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q); right.y = 0
+        const fwd   = new THREE.Vector3(0, 0, -1).applyQuaternion(q); fwd.y = 0
+        if (right.lengthSq() > 1e-6) right.normalize()
+        if (fwd.lengthSq()   > 1e-6) fwd.normalize()
+        return {right, fwd, up: new THREE.Vector3(0, 1, 0)}
+      }
+
       ;(window as any)._anchorApi = {
-        nudgePos: (dx: number, dy: number, dz: number) => {
-          obj0.position.x += dx; obj0.position.y += dy; obj0.position.z += dz
-          w.three.notifyChanged(obj0)
+        isReady: () => true,
+        // Flytta i kameraplanet (höger/upp) och på djupet (fram/bak)
+        moveScreen: (dRight: number, dUp: number) => {
+          const {right, up} = camVecs()
+          obj0.position.addScaledVector(right, dRight).addScaledVector(up, dUp)
+          refresh()
         },
-        nudgeRot: (ax: string, deg: number) => {
-          if (ax === 'x') obj0.rotateX(rad(deg))
-          else if (ax === 'y') obj0.rotateY(rad(deg))
-          else obj0.rotateZ(rad(deg))
-          w.three.notifyChanged(obj0)
+        moveDepth: (d: number) => {
+          const {fwd} = camVecs()
+          obj0.position.addScaledVector(fwd, d)
+          refresh()
         },
-        scaleBy: (f: number) => {
-          obj0.scale.multiplyScalar(f)
-          w.three.notifyChanged(obj0)
-        },
+        rotateYaw:   (deg: number) => { obj0.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), rad(deg)); refresh() },
+        rotatePitch: (deg: number) => { obj0.rotateOnWorldAxis(camVecs().right, rad(deg)); refresh() },
+        scaleBy:     (f: number)   => { obj0.scale.multiplyScalar(f); refresh() },
         read: () => {
           const d = (r: number) => Math.round(r * 180 / Math.PI * 10) / 10
           const n = (v: number) => Math.round(v * 1000) / 1000
-          const THREE = (window as any).THREE
           const markerMat = markerMatMap.get(eid)
           // Efter låsning ligger objektet i world space. Räkna om till markör-
           // relativ offset (markör⁻¹ · objektWorld) så besökarna får rätt.

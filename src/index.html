@@ -241,6 +241,19 @@
     margin-top: 10px; font: 12px monospace; color: #ffb060; word-break: break-all;
     user-select: all; -webkit-user-select: all;
   }
+  #calib #calib-hint { font-size: 12px; opacity: 0.7; margin-bottom: 8px; text-align: center; }
+  #calib .tool { flex: 1; padding: 14px 8px; font-size: 15px; }
+  #calib .tool.active { background: rgba(255,160,40,0.4); border-color: rgba(255,160,40,0.9); }
+  #calib #save-btn {
+    flex: 1; background: rgba(255,160,40,0.25); border-color: rgba(255,160,40,0.8); padding: 14px;
+  }
+  #calib #save-status { font-size: 12px; opacity: 0.85; margin-left: 10px; }
+
+  /* Heltäckande lager som fångar drag-gester (under panelen, över AR-vyn) */
+  #gesture-layer {
+    position: fixed; inset: 0; z-index: 25000; display: none; touch-action: none;
+  }
+  #gesture-layer.on { display: block; }
 </style>
 
 <!-- Startskärm -->
@@ -271,28 +284,21 @@
   background:rgba(0,0,0,0.6);color:#0f0;font:12px monospace;padding:6px 10px;
   text-align:center;pointer-events:none;display:none;">anchor: init…</div>
 
-<!-- Kalibreringspanel (visas bara med ?calibrate=1) -->
+<!-- Gestlager: dra på skärmen för att manipulera elden (admin/kalibrering) -->
+<div id="gesture-layer"></div>
+
+<!-- Kalibreringspanel (visas bara med ?calibrate=1 / ?admin=KOD) -->
 <div id="calib">
-  <div class="row"><span class="lbl">Flytta</span>
-    <button data-p="x-">X−</button><button data-p="x+">X+</button>
-    <button data-p="y-">Y−</button><button data-p="y+">Y+</button>
-    <button data-p="z-">Z−</button><button data-p="z+">Z+</button>
-  </div>
-  <div class="row"><span class="lbl">Rotera</span>
-    <button data-r="x-">X−</button><button data-r="x+">X+</button>
-    <button data-r="y-">Y−</button><button data-r="y+">Y+</button>
-    <button data-r="z-">Z−</button><button data-r="z+">Z+</button>
-  </div>
-  <div class="row"><span class="lbl">Skala</span>
-    <button data-s="-">−</button><button data-s="+">+</button>
-    <span class="lbl" style="width:auto;margin-left:14px">Steg</span>
-    <button id="step-btn">1×</button>
+  <div id="calib-hint">Rikta mot markören tills <b>LÅST ✓</b>, dra sedan på skärmen.</div>
+  <div class="row" id="tool-row">
+    <button class="tool active" data-tool="move">🖐 Flytta</button>
+    <button class="tool" data-tool="rotate">🔄 Rotera</button>
+    <button class="tool" data-tool="scale">⤢ Skala</button>
   </div>
   <div class="read" id="calib-read">pos … rot … scale …</div>
   <div class="row" id="calib-save-row" style="display:none">
-    <button id="save-btn" style="flex:1;background:rgba(255,160,40,0.25);
-      border-color:rgba(255,160,40,0.8);padding:13px">💾 SPARA placering</button>
-    <span id="save-status" style="font-size:12px;opacity:0.85"></span>
+    <button id="save-btn">💾 SPARA placering</button>
+    <span id="save-status"></span>
   </div>
 </div>
 
@@ -360,6 +366,11 @@
       setTimeout(() => {
         startScreen.style.display = 'none'
         if (showAROverlay) arOverlay.classList.add('visible')
+        // Visa kalibrerings-UI:t först nu (täcker då inte START/tillåt-dialog)
+        if (window._calibrateMode) {
+          document.getElementById('calib').classList.add('visible')
+          document.getElementById('gesture-layer').classList.add('on')
+        }
       }, 650)
     }
     startBtn.addEventListener('click', () => startExperience(true))
@@ -420,17 +431,72 @@
 
   if (calibrateOn) {
     window._calibrateMode = true
-    const panel = document.getElementById('calib')
-    panel.classList.add('visible')
+    // OBS: panelen + gestlagret visas först när upplevelsen startat (i
+    // startExperience), så de inte täcker START-knappen/tillåt-dialogen.
 
-    // Admin-läge (?admin=KOD): visa SPARA-knapp som skickar placeringen till servern
+    const api = () => window._anchorApi
+
+    // ── Verktygsval (Flytta / Rotera / Skala) ─────────────────────────────
+    let tool = 'move'
+    document.querySelectorAll('#tool-row .tool').forEach(b => b.addEventListener('click', () => {
+      tool = b.dataset.tool
+      document.querySelectorAll('#tool-row .tool').forEach(x => x.classList.toggle('active', x === b))
+    }))
+
+    // ── Drag-gester på gestlagret ─────────────────────────────────────────
+    const MOVE_K = 0.0025   // meter per pixel
+    const ROT_K  = 0.3      // grader per pixel
+    const SCL_K  = 0.004    // skala per pixel (en-finger skala)
+    const layer  = document.getElementById('gesture-layer')
+    let last = null, pinch = 0, twoY = null
+
+    const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+
+    layer.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) { last = {x: e.touches[0].clientX, y: e.touches[0].clientY} }
+      else if (e.touches.length === 2) {
+        pinch = dist(e.touches[0], e.touches[1])
+        twoY  = (e.touches[0].clientY + e.touches[1].clientY) / 2
+        last = null
+      }
+      e.preventDefault()
+    }, {passive: false})
+
+    layer.addEventListener('touchmove', e => {
+      const a = api(); if (!a) return
+      if (e.touches.length === 2) {
+        // Två fingrar: nyp = skala, vertikal dra = djup (i Flytta-läge)
+        const d = dist(e.touches[0], e.touches[1])
+        if (pinch) a.scaleBy(d / pinch)
+        pinch = d
+        const ay = (e.touches[0].clientY + e.touches[1].clientY) / 2
+        if (tool === 'move' && twoY != null) a.moveDepth(-(ay - twoY) * MOVE_K)
+        twoY = ay
+        e.preventDefault(); return
+      }
+      if (e.touches.length === 1 && last) {
+        const x = e.touches[0].clientX, y = e.touches[0].clientY
+        const dx = x - last.x, dy = y - last.y
+        last = {x, y}
+        if (tool === 'move')        a.moveScreen(dx * MOVE_K, -dy * MOVE_K)
+        else if (tool === 'rotate') { a.rotateYaw(-dx * ROT_K); a.rotatePitch(-dy * ROT_K) }
+        else if (tool === 'scale')  a.scaleBy(1 + (-dy) * SCL_K)
+        e.preventDefault()
+      }
+    }, {passive: false})
+
+    layer.addEventListener('touchend', e => {
+      if (e.touches.length === 0) { last = null; pinch = 0; twoY = null }
+    })
+
+    // ── Admin: SPARA-knapp ────────────────────────────────────────────────
     if (adminOn) {
       document.getElementById('calib-save-row').style.display = 'flex'
       const saveBtn = document.getElementById('save-btn')
       const saveStatus = document.getElementById('save-status')
       saveBtn.addEventListener('click', () => {
-        if (!window._anchorApi) { saveStatus.textContent = 'inte redo'; return }
-        const t = window._anchorApi.read()
+        if (!api()) { saveStatus.textContent = 'inte redo (lås först)'; return }
+        const t = api().read()
         saveStatus.textContent = 'sparar…'
         fetch('/api/calibration', {
           method: 'POST',
@@ -439,35 +505,11 @@
         })
           .then(r => r.json().then(j => ({ok: r.ok, j})))
           .then(({ok, j}) => { saveStatus.textContent = ok ? 'Sparat ✓' : ('Fel: ' + (j.error || '')) })
-          .catch(e => { saveStatus.textContent = 'Nätverksfel' })
+          .catch(() => { saveStatus.textContent = 'Nätverksfel' })
       })
     }
 
-    const POS = 0.01, ROT = 1, SCL = 1.02   // grundsteg: 1 cm, 1°, 2 %
-    let mult = 1
-    const stepBtn = document.getElementById('step-btn')
-    stepBtn.addEventListener('click', () => {
-      mult = mult === 1 ? 5 : (mult === 5 ? 20 : 1)
-      stepBtn.textContent = mult + '×'
-      stepBtn.classList.toggle('hot', mult !== 1)
-    })
-
-    const api = () => window._anchorApi
-    panel.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => {
-      if (!api()) return
-      const v = b.dataset.p, d = (v[1] === '+' ? 1 : -1) * POS * mult
-      api().nudgePos(v[0] === 'x' ? d : 0, v[0] === 'y' ? d : 0, v[0] === 'z' ? d : 0)
-    }))
-    panel.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
-      if (!api()) return
-      const v = b.dataset.r, d = (v[1] === '+' ? 1 : -1) * ROT * mult
-      api().nudgeRot(v[0], d)
-    }))
-    panel.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => {
-      if (!api()) return
-      api().scaleBy(b.dataset.s === '+' ? Math.pow(SCL, mult) : 1 / Math.pow(SCL, mult))
-    }))
-
+    // Live-avläsning av aktuell placering
     setInterval(() => {
       if (!api()) return
       const t = api().read()
