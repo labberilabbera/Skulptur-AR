@@ -25,13 +25,16 @@ export const particleVertexShader = /* glsl */ `
     vSeed     = aSeed;
 
     vec3 pos = position;
-    pos.y += t * uRise;
-
     float ag = aSeed * 6.2832;
     pos.x += sin(ag + time * 0.6 * uSpeed) * 0.012 * t;
     pos.z += cos(ag + time * 0.5 * uSpeed) * 0.012 * t;
 
-    vec4 mvPos   = modelViewMatrix * vec4(pos, 1.0);
+    // Till världsrymd och stig i VÄRLDENS upp-riktning (Y) — oberoende av hur
+    // modellen är roterad/skalad, så gnistorna alltid åker rakt upp.
+    vec4 wpos = modelMatrix * vec4(pos, 1.0);
+    wpos.y += t * uRise;
+
+    vec4 mvPos   = viewMatrix * wpos;
     gl_PointSize = uSize * mix(1.0, 0.08, t * t);
     gl_Position  = projectionMatrix * mvPos;
   }
