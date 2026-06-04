@@ -149,6 +149,77 @@
     height: 24px;
     fill: white;
   }
+
+  /* ── Avsluta-knapp (visas under upplevelsen) ─────────────────────── */
+  #exit-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 9999;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Slutskärm (skanna nästa QR) ─────────────────────────────────── */
+  #end-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 21000;
+    background: rgba(0, 0, 0, 0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 0 40px;
+    text-align: center;
+  }
+  #end-screen.visible {
+    display: flex;
+  }
+  #end-title {
+    color: rgba(255, 255, 255, 0.95);
+    font-family: system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    margin: 0;
+  }
+  #end-text {
+    color: rgba(255, 255, 255, 0.7);
+    font-family: system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 300;
+    margin: 0;
+    max-width: 300px;
+    line-height: 1.6;
+  }
+  #restart-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 160, 40, 0.8);
+    border-radius: 50px;
+    color: rgba(255, 160, 40, 0.9);
+    font-family: system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    padding: 14px 40px;
+    cursor: pointer;
+  }
+  #restart-btn:active {
+    background: rgba(255, 160, 40, 0.2);
+  }
 </style>
 
 <!-- Startskärm -->
@@ -171,6 +242,16 @@
   <svg id="icon-paused" viewBox="0 0 24 24" style="display:none"><path d="M8 5v14l11-7z"/></svg>
 </button>
 
+<!-- Avsluta-knapp -->
+<button id="exit-btn" aria-label="Avsluta upplevelsen">&#10005;</button>
+
+<!-- Slutskärm: uppmana att skanna nästa QR-kod -->
+<div id="end-screen">
+  <p id="end-title">Skanna nästa skulptur</p>
+  <p id="end-text">Rikta telefonens kamera mot en ny QR-kod för nästa upplevelse.</p>
+  <button id="restart-btn">&#8635; STARTA OM</button>
+</div>
+
 <script>
   // Delad state mellan load- och xrloaded-hanterarna.
   // VIKTIGT: startskärmen får INTE visas medan 8th Wall ber om kamera-/
@@ -186,6 +267,9 @@
     const musicBtn    = document.getElementById('music-btn')
     const iconPlay    = document.getElementById('icon-playing')
     const iconPause   = document.getElementById('icon-paused')
+    const exitBtn     = document.getElementById('exit-btn')
+    const endScreen   = document.getElementById('end-screen')
+    const restartBtn  = document.getElementById('restart-btn')
 
     // Dölj startskärmen direkt — den avslöjas först när kameran är redo, så
     // den aldrig täcker 8th Walls/webbläsarens tillåt-dialog vid laddning.
@@ -210,12 +294,27 @@
         audio.play().catch(err => console.warn('[audio] play failed:', err))
       }
       startScreen.classList.add('hidden')
+      exitBtn.style.display = 'flex'   // visa avsluta-knappen under upplevelsen
       setTimeout(() => {
         startScreen.style.display = 'none'
         if (showAROverlay) arOverlay.classList.add('visible')
       }, 650)
     }
     startBtn.addEventListener('click', () => startExperience(true))
+
+    // Avsluta-knapp — stoppa upplevelsen och visa "skanna nästa QR"-skärm
+    exitBtn.addEventListener('click', () => {
+      const audio = window._arAudio
+      if (audio) audio.pause()
+      arOverlay.classList.remove('visible')
+      exitBtn.style.display = 'none'
+      endScreen.classList.add('visible')
+      // Stäng av kameran för att spara batteri (om API:t finns)
+      try { if (window.XR8 && XR8.stop) XR8.stop() } catch (e) { /* noop */ }
+    })
+
+    // Starta om — ladda om sidan för en ren omstart av denna upplevelse
+    restartBtn.addEventListener('click', () => location.reload())
 
     // Editor/desktop: ingen kameratillstånds-dialog → starta direkt utan startskärm
     const isInEditor    = window.self !== window.top
