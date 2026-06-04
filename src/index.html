@@ -362,10 +362,29 @@
         {
           event: 'reality.imagefound',
           process: ({detail}) => {
+            // Spåra vilka bildmål som syns — world-anchor-komponenten läser detta
+            window._imageTargetState = window._imageTargetState || {}
+            window._imageTargetState[detail.name] = true
             if (detail.name !== 'fram') return
             const overlay = document.getElementById('ar-overlay')
             overlay.classList.add('hidden')
             setTimeout(() => { overlay.classList.remove('visible') }, 900)
+          },
+        },
+        {
+          // Håll målet "levande" varje frame det är spårat
+          event: 'reality.imageupdated',
+          process: ({detail}) => {
+            window._imageTargetState = window._imageTargetState || {}
+            window._imageTargetState[detail.name] = true
+          },
+        },
+        {
+          // Markören lämnade bilden — world-anchor har redan fryst innehållet
+          event: 'reality.imagelost',
+          process: ({detail}) => {
+            window._imageTargetState = window._imageTargetState || {}
+            window._imageTargetState[detail.name] = false
           },
         },
       ],
