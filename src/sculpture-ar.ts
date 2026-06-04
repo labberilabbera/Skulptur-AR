@@ -89,6 +89,46 @@ ecs.registerComponent({
       return geo
     }
 
+    // Hämta en giltig bounding box för en mesh (geometrin, eller via sfären)
+    const getBox = (g: any) => {
+      let box = g.boundingBox
+      if (!box) { try { g.computeBoundingBox(); box = g.boundingBox } catch (e) { /* */ } }
+      if (box && isFinite(box.min.x) && isFinite(box.max.x) && box.max.x > box.min.x) return box
+      const sph = g.boundingSphere
+      if (sph && isFinite(sph.radius) && sph.radius > 0) {
+        const c = sph.center, r = sph.radius
+        return new THREE.Box3(
+          new THREE.Vector3(c.x - r, c.y - r, c.z - r),
+          new THREE.Vector3(c.x + r, c.y + r, c.z + r))
+      }
+      return null
+    }
+
+    // Fallback: generera partiklar i modellens volym när vertexdatan ej är
+    // åtkomlig på CPU (8th Wall exponerar inte alltid attributen). Gnistor
+    // stiger i en pelare runt figuren.
+    const makeParticleGeoFromBox = (box: any, cnt: number) => {
+      const pos  = new Float32Array(cnt * 3)
+      const off  = new Float32Array(cnt)
+      const seed = new Float32Array(cnt)
+      const idx  = new Float32Array(cnt)
+      const sx = box.max.x - box.min.x, sy = box.max.y - box.min.y, sz = box.max.z - box.min.z
+      for (let i = 0; i < cnt; i++) {
+        pos[i*3]   = box.min.x + (0.25 + 0.5 * Math.random()) * sx
+        pos[i*3+1] = box.min.y + Math.random() * sy
+        pos[i*3+2] = box.min.z + (0.25 + 0.5 * Math.random()) * sz
+        off[i]  = Math.random()
+        seed[i] = Math.random()
+        idx[i]  = cnt > 1 ? i / (cnt - 1) : 0
+      }
+      const geo = new THREE.BufferGeometry()
+      geo.setAttribute('position', new THREE.BufferAttribute(pos,  3))
+      geo.setAttribute('aOffset',  new THREE.BufferAttribute(off,  1))
+      geo.setAttribute('aSeed',    new THREE.BufferAttribute(seed, 1))
+      geo.setAttribute('aIndex',   new THREE.BufferAttribute(idx,  1))
+      return geo
+    }
+
     const applyFire = (model: any) => {
       if (setupDoneMap.get(component.eid)) return
       setupDoneMap.set(component.eid, true)
@@ -145,16 +185,20 @@ ecs.registerComponent({
         fireMats.push(fireMat)
 
         const geo = child.geometry
+        const ga  = geo && geo.attributes
         const pa  = geo && typeof geo.getAttribute === 'function'
           ? geo.getAttribute('position')
-          : (geo && geo.attributes ? geo.attributes.position : null)
-        if (!pa) {
-          diag = `skip: geo=${!!geo} getAttr=${!!(geo && geo.getAttribute)} attrs=${geo && geo.attributes ? Object.keys(geo.attributes).join(',') : '-'}`
-          return
+          : (ga ? ga.position : null)
+        // Partikel-positioner: från ytan om vertexdatan finns, annars från
+        // modellens volym (bounding box) som fallback.
+        const box = pa ? null : getBox(geo)
+        if (!diag) {
+          diag = pa ? 'yta' : (box ? 'box-fallback' : `INGEN pos/box (bb=${geo && geo.boundingBox ? 'y' : 'n'} bs=${geo && geo.boundingSphere ? 'y' : 'n'})`)
         }
+        if (!pa && !box) return
 
         // ── Particle layer 1 ──────────────────────────────────────────────────
-        const geo1  = makeParticleGeo(pa, 200)
+        const geo1  = pa ? makeParticleGeo(pa, 200) : makeParticleGeoFromBox(box, 200)
         const pMat1 = new THREE.ShaderMaterial({
           vertexShader: particleVertexShader, fragmentShader: particleFragmentShader,
           uniforms: {
@@ -177,7 +221,7 @@ ecs.registerComponent({
         p1Mats.push(pMat1)
 
         // ── Particle layer 2 ──────────────────────────────────────────────────
-        const geo2  = makeParticleGeo(pa, 150)
+        const geo2  = pa ? makeParticleGeo(pa, 150) : makeParticleGeoFromBox(box, 150)
         const pMat2 = new THREE.ShaderMaterial({
           vertexShader: particleVertexShader, fragmentShader: particleFragmentShader,
           uniforms: {
