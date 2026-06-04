@@ -12,9 +12,10 @@ import * as ecs from '@8thwall/ecs'
 // namn ("fram"). Offseten (markör bredvid → eld på skulpturen) ställs in genom
 // objektets vanliga position/rotation relativt ImageTarget i editorn.
 
-const lockedMap  = new Map<bigint, boolean>()
-const hitsMap    = new Map<bigint, number>()
-const appliedMap = new Map<bigint, boolean>()  // har sparad kalibrering applicerats
+const lockedMap   = new Map<bigint, boolean>()
+const hitsMap     = new Map<bigint, number>()
+const appliedMap  = new Map<bigint, boolean>()  // har sparad kalibrering applicerats
+const markerMatMap = new Map<bigint, any>()     // markörens (förälderns) world-pose vid låsning
 
 ecs.registerComponent({
   name: 'world-anchor',
@@ -65,9 +66,22 @@ ecs.registerComponent({
           w.three.notifyChanged(obj0)
         },
         read: () => {
-          const e = obj0.rotation
           const d = (r: number) => Math.round(r * 180 / Math.PI * 10) / 10
           const n = (v: number) => Math.round(v * 1000) / 1000
+          const THREE = (window as any).THREE
+          const markerMat = markerMatMap.get(eid)
+          // Efter låsning ligger objektet i world space. Räkna om till markör-
+          // relativ offset (markör⁻¹ · objektWorld) så besökarna får rätt.
+          if (THREE && markerMat) {
+            obj0.updateWorldMatrix(true, false)
+            const rel = markerMat.clone().invert().multiply(obj0.matrixWorld)
+            const p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3()
+            rel.decompose(p, q, sc)
+            const e = new THREE.Euler().setFromQuaternion(q, 'XYZ')
+            return {pos: [n(p.x), n(p.y), n(p.z)], rot: [d(e.x), d(e.y), d(e.z)], scale: n(sc.x)}
+          }
+          // Före låsning: objektets lokala transform (relativt bildmålet)
+          const e = obj0.rotation
           return {
             pos:   [n(obj0.position.x), n(obj0.position.y), n(obj0.position.z)],
             rot:   [d(e.x), d(e.y), d(e.z)],
@@ -113,9 +127,9 @@ ecs.registerComponent({
     }
     ;(window as any)._anchorStatus = status
 
-    // I kalibreringsläge: lås aldrig — stå kvar mot markören så att nudge-
-    // justeringarna ändrar den lokala offseten (= Studio-värdena).
-    if ((window as any)._calibrateMode) { status.target = 'KALIBRERING'; return }
+    // Admin/kalibrering låser också (så man kan titta bort från markören och
+    // nudga fritt) — skillnaden är att man där får nudga + spara.
+    if ((window as any)._calibrateMode) status.target = 'KALIBRERING'
 
     if (locked && !s.relock) return
 
@@ -139,6 +153,15 @@ ecs.registerComponent({
     if (!obj)   { status.err = 'inget 3d-objekt'; return }
     if (!scene) { status.err = 'ingen scen';      return }
     try {
+      // Spara markörens (förälderns) world-pose vid låsning — används för att
+      // räkna om nudge-justeringar till markör-relativ offset vid SPARA.
+      const THREE = (window as any).THREE
+      const parent = obj.parent
+      if (THREE && parent) {
+        if (typeof parent.updateWorldMatrix === 'function') parent.updateWorldMatrix(true, false)
+        markerMatMap.set(eid, parent.matrixWorld.clone())
+      }
+
       if (typeof (scene as any).attach === 'function') {
         ;(scene as any).attach(obj)        // bevarar world-transform
       } else if (obj.parent) {
@@ -163,5 +186,6 @@ ecs.registerComponent({
     lockedMap.delete(component.eid)
     hitsMap.delete(component.eid)
     appliedMap.delete(component.eid)
+    markerMatMap.delete(component.eid)
   },
 })
