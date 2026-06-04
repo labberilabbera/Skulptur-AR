@@ -49,13 +49,16 @@ ecs.registerComponent({
       ? !!state[name]
       : Object.keys(state).some(k => state[k] === true)
 
-    // Rapportera status till debug-HUD på skärmen
-    ;(window as any)._anchorStatus = {
+    const threshold = Math.max(1, Math.floor(s.framesToLock))
+    const status: any = {
       found,
       hits:   hitsMap.get(eid) ?? 0,
       locked,
       target: name || '(any)',
+      threshold,
+      err: (window as any)._anchorStatus?.err,
     }
+    ;(window as any)._anchorStatus = status
 
     if (locked && !s.relock) return
 
@@ -67,12 +70,13 @@ ecs.registerComponent({
     // Räkna stabila träffar i rad innan vi fryser
     const hits = (hitsMap.get(eid) ?? 0) + 1
     hitsMap.set(eid, hits)
-    if (hits < Math.max(1, Math.floor(s.framesToLock))) return
+    status.hits = hits
+    if (hits < threshold) return
 
     // Frys i world space: läs nuvarande world-transform (bildmålet har redan
     // placerat oss med rätt offset) och lossa från bildmålet.
     const e = world.eidToEntity.get(eid)
-    if (!e) return
+    if (!e) { status.err = 'ingen entity'; return }
     try {
       const wp = e.getWorldPosition()
       const wq = e.getWorldQuaternion()
@@ -89,8 +93,11 @@ ecs.registerComponent({
 
       lockedMap.set(eid, true)
       hitsMap.set(eid, 0)
+      status.locked = true
+      status.err = undefined
       console.log('[world-anchor] låst i world space mot', s.targetName)
-    } catch (err) {
+    } catch (err: any) {
+      status.err = String((err && err.message) || err)
       console.warn('[world-anchor] kunde inte låsa:', err)
     }
   },

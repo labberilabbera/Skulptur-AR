@@ -359,9 +359,9 @@
     const imgs = window._imageTargetState || {}
     const a    = window._anchorStatus || {}
     const seen = Object.keys(imgs).filter(k => imgs[k]).join(',') || '–'
-    hud.textContent = `img:[${seen}]  found:${a.found ? 'JA' : 'nej'}  hits:${a.hits || 0}  ` +
-      (a.locked ? 'LÅST ✓ (flytta kameran fritt)' : 'ej låst')
-    hud.style.color = a.locked ? '#0f0' : (a.found ? '#ff0' : '#f80')
+    hud.textContent = `img:[${seen}] found:${a.found ? 'JA' : 'nej'} hits:${a.hits || 0}/${a.threshold ?? '?'} ` +
+      (a.locked ? 'LÅST ✓' : 'ej låst') + (a.err ? ('  ERR: ' + a.err) : '')
+    hud.style.color = a.err ? '#f44' : (a.locked ? '#0f0' : (a.found ? '#ff0' : '#f80'))
   }, 150)
 
   window.addEventListener('xrloaded', () => {
