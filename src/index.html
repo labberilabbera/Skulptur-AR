@@ -172,15 +172,20 @@
 </button>
 
 <script>
+  // Delas mellan load- och xrloaded-hanterarna: om scan-overlayn ska visas
+  // när kameran väl är igång. Visas INTE direkt vid STARTA — då skulle den
+  // täcka webbläsarens/8th Walls kamera- och rörelse-tillåt-dialog.
+  let wantAROverlay = false
+
   window.addEventListener('load', () => {
     const startScreen = document.getElementById('start-screen')
     const startBtn    = document.getElementById('start-btn')
-    const arOverlay   = document.getElementById('ar-overlay')
     const musicBtn    = document.getElementById('music-btn')
     const iconPlay    = document.getElementById('icon-playing')
     const iconPause   = document.getElementById('icon-paused')
 
-    // Starta-knapp — startar musik + visar AR-overlay
+    // Starta-knapp — startar musik. Scan-overlayn visas först när kameran
+    // är igång (reality.ready), så den aldrig blockerar tillåt-dialogen.
     const startExperience = (showAROverlay = true) => {
       // Sätt upp audio-analysern (audioReact) och starta musiken
       if (window._setupAudioAnalyser) window._setupAudioAnalyser()
@@ -188,10 +193,10 @@
       if (audio) {
         audio.play().catch(err => console.warn('[audio] play failed:', err))
       }
+      wantAROverlay = showAROverlay
       startScreen.classList.add('hidden')
       setTimeout(() => {
         startScreen.style.display = 'none'
-        if (showAROverlay) arOverlay.classList.add('visible')
       }, 650)
     }
     startBtn.addEventListener('click', () => startExperience(true))
@@ -220,11 +225,21 @@
     })
   })
 
-  // Göm AR-overlay när image target hittas
+  // Visa scan-overlayn först när kameran är igång (efter att tillstånd getts),
+  // och göm den när image target hittas.
   window.addEventListener('xrloaded', () => {
     XR8.addCameraPipelineModule({
       name: 'ar-overlay-module',
       listeners: [
+        {
+          // Kameran är uppe och behörighet beviljad — nu är det säkert att
+          // visa "Rikta kameran mot skulpturen" utan att täcka tillåt-dialogen.
+          event: 'reality.ready',
+          process: () => {
+            if (!wantAROverlay) return
+            document.getElementById('ar-overlay').classList.add('visible')
+          },
+        },
         {
           event: 'reality.imagefound',
           process: ({detail}) => {
