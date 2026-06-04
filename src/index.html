@@ -172,41 +172,62 @@
 </button>
 
 <script>
-  // Delas mellan load- och xrloaded-hanterarna: om scan-overlayn ska visas
-  // när kameran väl är igång. Visas INTE direkt vid STARTA — då skulle den
-  // täcka webbläsarens/8th Walls kamera- och rörelse-tillåt-dialog.
-  let wantAROverlay = false
+  // Delad state mellan load- och xrloaded-hanterarna.
+  // VIKTIGT: startskärmen får INTE visas medan 8th Wall ber om kamera-/
+  // rörelsetillstånd, för då lägger den sig över tillåt-dialogen. Därför hålls
+  // den dold tills kameran är redo (reality.ready) — efter beviljat tillstånd.
+  let experienceStarted = false   // STARTA tryckt (eller auto-start i editor/desktop)
+  let cameraReady       = false   // reality.ready har inträffat
 
   window.addEventListener('load', () => {
     const startScreen = document.getElementById('start-screen')
     const startBtn    = document.getElementById('start-btn')
+    const arOverlay   = document.getElementById('ar-overlay')
     const musicBtn    = document.getElementById('music-btn')
     const iconPlay    = document.getElementById('icon-playing')
     const iconPause   = document.getElementById('icon-paused')
 
-    // Starta-knapp — startar musik. Scan-overlayn visas först när kameran
-    // är igång (reality.ready), så den aldrig blockerar tillåt-dialogen.
+    // Dölj startskärmen direkt — den avslöjas först när kameran är redo, så
+    // den aldrig täcker 8th Walls/webbläsarens tillåt-dialog vid laddning.
+    startScreen.style.display = 'none'
+
+    // Visa startskärmen (anropas vid reality.ready på mobil, eller fallback)
+    window._revealStartScreen = () => {
+      if (experienceStarted) return
+      startScreen.style.display = 'flex'
+      startScreen.classList.remove('hidden')
+    }
+
+    // Starta-knapp — startar musik + scan-overlay. Tillstånd är redan beviljat
+    // här (kameran är igång), så scan-overlayn kan visas direkt utan risk.
     const startExperience = (showAROverlay = true) => {
+      if (experienceStarted) return
+      experienceStarted = true
       // Sätt upp audio-analysern (audioReact) och starta musiken
       if (window._setupAudioAnalyser) window._setupAudioAnalyser()
       const audio = window._arAudio
       if (audio) {
         audio.play().catch(err => console.warn('[audio] play failed:', err))
       }
-      wantAROverlay = showAROverlay
       startScreen.classList.add('hidden')
       setTimeout(() => {
         startScreen.style.display = 'none'
+        if (showAROverlay) arOverlay.classList.add('visible')
       }, 650)
     }
     startBtn.addEventListener('click', () => startExperience(true))
 
-    // Editor-läge: hoppa över både startskärm och AR-overlay
-    // 8th Wall-editorn kör förhandsgranskningen i en iframe — detektera det
+    // Editor/desktop: ingen kameratillstånds-dialog → starta direkt utan startskärm
     const isInEditor    = window.self !== window.top
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
     if (isInEditor || !isTouchDevice) {
       startExperience(false)
+    } else if (cameraReady) {
+      // reality.ready hann före load-eventet — visa startskärmen nu
+      window._revealStartScreen()
+    } else {
+      // Säkerhetsnät: visa startskärmen ändå om reality.ready uteblir
+      setTimeout(() => window._revealStartScreen && window._revealStartScreen(), 9000)
     }
 
     // Musik-knapp — pausa/spela
@@ -233,11 +254,11 @@
       listeners: [
         {
           // Kameran är uppe och behörighet beviljad — nu är det säkert att
-          // visa "Rikta kameran mot skulpturen" utan att täcka tillåt-dialogen.
+          // visa startskärmen utan att täcka tillåt-dialogen.
           event: 'reality.ready',
           process: () => {
-            if (!wantAROverlay) return
-            document.getElementById('ar-overlay').classList.add('visible')
+            cameraReady = true
+            if (window._revealStartScreen) window._revealStartScreen()
           },
         },
         {
