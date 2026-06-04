@@ -146,50 +146,44 @@
       "order": 3,
       "hidden": false
     },
-    "62f22cd6-d16d-49af-a670-614dd9a690f3": {
-      "id": "62f22cd6-d16d-49af-a670-614dd9a690f3",
+    "b7bf2353-9cac-46a3-8398-86e962dbbb7c": {
+      "id": "b7bf2353-9cac-46a3-8398-86e962dbbb7c",
       "position": [
-        -0.019027321474331366,
-        0.19819161722542245,
-        -0.07770384981130034
+        0.04848195193649641,
+        -0.08089754190401767,
+        -0.2646015420026867
       ],
       "rotation": [
-        -0.2062745397598228,
-        0.4956431114155955,
-        0.30513469039666236,
-        0.786563119571261
+        0.15016926859250423,
+        -0.6916696189247308,
+        -0.06352331306468746,
+        0.7035674223016553
       ],
       "scale": [
-        3.101796052297484,
-        3.101796052297489,
-        3.1017960522974874
+        2.9533017949908342,
+        2.953301794990825,
+        2.953301794990828
       ],
       "geometry": null,
-      "material": {
-        "type": "basic",
-        "color": "#FFFFFF"
-      },
-      "parentId": "b2c4e8f1-1234-4abc-8def-000000000002",
+      "material": null,
+      "parentId": "b2c4e8f1-1234-4abc-8def-000000000001",
       "components": {
-        "c1a2b3c4-d5e6-7890-abcd-ef1234560001": {
-          "id": "c1a2b3c4-d5e6-7890-abcd-ef1234560001",
+        "b02a9aca-1b14-47e1-a4b5-33fdd5402268": {
+          "id": "b02a9aca-1b14-47e1-a4b5-33fdd5402268",
           "name": "sculpture-fire",
           "parameters": {
-            "density": 0.3,
-            "speed": 0.01,
-            "audioReact": 0.4,
-            "p1Count": 0.5,
-            "p1Size": 20,
-            "p1Speed": 0.004,
-            "p1Rise": 0.6,
-            "p2Count": 5,
-            "p2Size": 10,
-            "p2Speed": 0.1,
-            "p2Rise": 0.2,
-            "showModel": false,
             "inflate": 0.01,
             "softness": 0,
-            "feather": 1
+            "feather": 2,
+            "speed": 0.01,
+            "audioReact": 0.3,
+            "p1Size": 20,
+            "p1Speed": 0.01,
+            "p1Rise": 0.2,
+            "p2Count": 1,
+            "p2Size": 10,
+            "p2Speed": 0.001,
+            "showModel": false
           }
         }
       },
@@ -202,7 +196,7 @@
         "loop": true
       },
       "name": "sculpture.glb",
-      "order": 1.3840027751246284
+      "order": 4.889495608508911
     }
   },
   "spaces": {
