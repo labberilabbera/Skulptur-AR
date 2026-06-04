@@ -35,18 +35,17 @@ const glowFragmentShader = /* glsl */ `
     vec3 g = texture2D(tGlow, vUv).rgb;
     float lum = max(max(g.r, g.g), g.b);
 
-    // Andning (långsam puls) + ljud-reaktivitet
-    float breath = 0.55 + 0.45 * sin(time * 1.4);
-    float audio  = 0.6 + uAudio * 1.6;
+    // Mjuk andning + flödande flimmer uppåt i sprickorna = levande grundglöd
+    float breath = 0.6 + 0.4 * sin(time * 1.3);
+    float flow   = 0.7 + 0.3 * noise(vUv * vec2(8.0, 22.0) + vec2(0.0, -time * 1.2));
+    float base   = breath * flow;
 
-    // Flödande flimmer uppåt i sprickorna
-    float flow = 0.75 + 0.35 * noise(vUv * vec2(8.0, 22.0) + vec2(0.0, -time * 1.2));
-
-    float intensity = breath * audio * flow * uBoost;
+    // Musiken lyfter glöden tydligt ovanpå grundnivån
+    float intensity = base * (0.7 + uAudio * 2.0) * uBoost;
 
     vec3 col = g * intensity * 1.6;
     // glödhett kärnsken mot vit-orange vid musikens toppar
-    col += vec3(1.0, 0.45, 0.12) * lum * uAudio * 0.9;
+    col += vec3(1.0, 0.5, 0.15) * lum * uAudio * 1.2;
 
     gl_FragColor = vec4(col, 1.0);
   }
@@ -131,17 +130,19 @@ ecs.registerComponent({
     const mats = matsMap.get(component.eid)
     if (!mats) return
     const s  = component.schema
-    const t  = world.time.elapsed * 0.001 * s.speed
+    // Tillförlitlig sekund-klocka (oberoende av ECS-tidsenhet)
+    const t  = (performance.now() * 0.001) * s.speed
     const ad = (window as any).audioData
 
-    // Ljud-energi → mjukad nivå
-    let level = 0
+    // Ljud-energi → mål, med snabb attack / långsam decay = musikalisk pump
+    let target = 0
     if (ad && ad.active) {
-      const energy = ad.bass * 0.5 + ad.mid * 1.0 + (ad.treble ?? 0) * 1.4
-      level = Math.min(1.0, energy * s.audioReact)
+      const energy = ad.bass * 0.6 + ad.mid * 1.0 + (ad.treble ?? 0) * 1.3
+      target = Math.min(1.0, energy * s.audioReact * 0.6)
     }
     const prev   = audioSmoothMap.get(component.eid) ?? 0
-    const smooth = prev + (level - prev) * 0.3
+    const k      = target > prev ? 0.5 : 0.08
+    const smooth = prev + (target - prev) * k
     audioSmoothMap.set(component.eid, smooth)
 
     for (const mat of mats) {

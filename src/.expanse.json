@@ -65,7 +65,8 @@
           "desktop": "3D",
           "xrCameraType": "world",
           "headset": "disabled"
-        }
+        },
+        "nearClip": 0.6
       },
       "components": {},
       "geometry": null,
@@ -79,14 +80,14 @@
       ],
       "rotation": [
         0,
+        0.9971337028150561,
         0,
-        0,
-        1
+        -0.0756596240430487
       ],
       "scale": [
+        1.0000000000000004,
         1,
-        1,
-        1
+        1.0000000000000004
       ],
       "parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",
       "order": 1.0308214152219775
@@ -146,64 +147,87 @@
       "order": 3,
       "hidden": false
     },
-    "b7bf2353-9cac-46a3-8398-86e962dbbb7c": {
-      "id": "b7bf2353-9cac-46a3-8398-86e962dbbb7c",
+    "187123e3-1066-407b-9eb3-b7519e9269de": {
+      "id": "187123e3-1066-407b-9eb3-b7519e9269de",
       "position": [
-        1.5380887755556165,
-        2.3041278194239814,
-        4.574959802383137
+        0.33738005379133923,
+        1.4408118022709566,
+        -2.45400341990696
       ],
       "rotation": [
-        -0.2975357216301908,
-        0.6792333686129313,
-        0.5944801512870602,
-        -0.31097889806616374
+        -0.0038147356444352314,
+        -0.7370164437243052,
+        0.00483741586691337,
+        0.6758467347555004
       ],
       "scale": [
-        8.915319294651677,
-        8.915319294651637,
-        8.915319294651662
+        2.9751102658373094,
+        2.975110265837305,
+        2.9751102658373076
       ],
       "geometry": null,
       "material": null,
-      "parentId": "b2c4e8f1-1234-4abc-8def-000000000001",
+      "parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",
       "components": {
-        "b02a9aca-1b14-47e1-a4b5-33fdd5402268": {
-          "id": "b02a9aca-1b14-47e1-a4b5-33fdd5402268",
-          "name": "sculpture-fire",
-          "parameters": {
-            "inflate": 0,
-            "softness": 0,
-            "feather": 0,
-            "speed": 0.01,
-            "audioReact": 0.3,
-            "p1Size": 20,
-            "p1Speed": 0.01,
-            "p1Rise": 0.2,
-            "p2Count": 1,
-            "p2Size": 10,
-            "p2Speed": 0.001,
-            "showModel": false
-          }
-        },
-        "3aebc472-45cb-4f51-b787-d9d7f41a491e": {
-          "id": "3aebc472-45cb-4f51-b787-d9d7f41a491e",
+        "a03f69c9-9786-4013-befd-8e44e87b6753": {
+          "id": "a03f69c9-9786-4013-befd-8e44e87b6753",
           "name": "world-anchor",
+          "parameters": {}
+        }
+      },
+      "gltfModel": {
+        "src": {
+          "type": "asset",
+          "asset": "assets/frkolnad_kvinna_.glb"
+        },
+        "animationClip": "",
+        "loop": true
+      },
+      "name": "frkolnad_kvinna_.glb",
+      "order": 1.6751674722496983
+    },
+    "35e50333-496b-4cbb-b946-5c06584b97ba": {
+      "id": "35e50333-496b-4cbb-b946-5c06584b97ba",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "geometry": null,
+      "material": null,
+      "parentId": "187123e3-1066-407b-9eb3-b7519e9269de",
+      "components": {
+        "faa870d2-bd07-4066-8214-e26b5c7b9e5f": {
+          "id": "faa870d2-bd07-4066-8214-e26b5c7b9e5f",
+          "name": "ember-glow",
           "parameters": {
-            "relock": false
+            "speed": 1,
+            "audioReact": 1,
+            "boost": 1
           }
         }
       },
       "gltfModel": {
         "src": {
           "type": "asset",
-          "asset": "assets/sculpture.glb"
+          "asset": "assets/eld_textur.glb"
         },
         "animationClip": "",
         "loop": true
       },
-      "name": "sculpture.glb",
-      "order": 4.889495608508911
+      "name": "eld_textur.glb",
+      "order": 1.5999723672012833
     }
   },
   "spaces": {
