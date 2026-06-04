@@ -5,6 +5,7 @@ import {particleVertexShader, particleFragmentShader} from './particle-shader'
 const fireMatsMap     = new Map<bigint, any[]>()
 const p1MatsMap       = new Map<bigint, any[]>()
 const p2MatsMap       = new Map<bigint, any[]>()
+const origMeshMap     = new Map<bigint, any[]>()  // originalmeshes (den solida modellen) för att kunna dölja/visa
 const gltfListenerMap = new Map<bigint, (e: any) => void>()
 const setupDoneMap    = new Map<bigint, boolean>()
 
@@ -17,6 +18,8 @@ ecs.registerComponent({
   name: 'sculpture-fire',
 
   schema: {
+    showModel:  ecs.boolean,   // visa den solida 3D-modellen under elden (av = bara effekter)
+
     density:    ecs.f32,
     speed:      ecs.f32,
     audioReact: ecs.f32,
@@ -32,6 +35,8 @@ ecs.registerComponent({
     p2Rise:     ecs.f32,
   },
   schemaDefaults: {
+    showModel:  true,
+
     density:    0.85,
     speed:      1.0,
     audioReact: 1.5,
@@ -84,9 +89,13 @@ ecs.registerComponent({
       const fireMats: any[] = []
       const p1Mats:   any[] = []
       const p2Mats:   any[] = []
+      const origMeshes: any[] = []
 
       model.traverse((child: any) => {
         if (!child.isMesh) return
+
+        // Spara originalmeshen så vi kan dölja/visa den solida modellen via showModel
+        origMeshes.push(child)
 
         // Räkna ut Y-min/max så shadern kan mappa varje vertex till 0-1 (ben→huvud)
         child.geometry.computeBoundingBox()
@@ -162,6 +171,7 @@ ecs.registerComponent({
       fireMatsMap.set(component.eid, fireMats)
       p1MatsMap.set(component.eid, p1Mats)
       p2MatsMap.set(component.eid, p2Mats)
+      origMeshMap.set(component.eid, origMeshes)
       console.log('[sculpture-fire] klar — ytor:', fireMats.length)
     }
 
@@ -194,6 +204,14 @@ ecs.registerComponent({
     const prev   = audioShiftSmoothMap.get(component.eid) ?? 0
     const smooth = prev + (rawLevel - prev) * 0.35
     audioShiftSmoothMap.set(component.eid, smooth)
+
+    // ── Visa/dölj den solida 3D-modellen (live-togglebar i Studio) ─────────
+    const origMeshes = origMeshMap.get(component.eid)
+    if (origMeshes) {
+      for (const m of origMeshes) {
+        if (m.visible !== s.showModel) m.visible = s.showModel
+      }
+    }
 
     // ── Uppdatera kroppens eldmaterial ──────────────────────────────────────
     const fireMats = fireMatsMap.get(component.eid)
@@ -238,6 +256,7 @@ ecs.registerComponent({
     fireMatsMap.delete(component.eid)
     p1MatsMap.delete(component.eid)
     p2MatsMap.delete(component.eid)
+    origMeshMap.delete(component.eid)
     setupDoneMap.delete(component.eid)
     audioShiftSmoothMap.delete(component.eid)
   },
