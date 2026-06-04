@@ -6,8 +6,9 @@
 //   KV_REST_API_URL, KV_REST_API_TOKEN   (skapas när du kopplar KV i Vercel)
 //   ADMIN_PASSCODE                       (sätter du själv — admin-lösenordet)
 
-const KV_URL   = process.env.KV_REST_API_URL
-const KV_TOKEN = process.env.KV_REST_API_TOKEN
+// Stöder både Vercel KV- och Upstash-namngivningen av miljövariablerna
+const KV_URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN
 const PASSCODE = process.env.ADMIN_PASSCODE
 
 async function kv(command) {
