@@ -16,6 +16,8 @@ const lockedMap   = new Map<bigint, boolean>()
 const hitsMap     = new Map<bigint, number>()
 const appliedMap  = new Map<bigint, boolean>()  // har sparad kalibrering applicerats
 const markerMatMap = new Map<bigint, any>()     // markörens (förälderns) world-pose vid låsning
+const markerObjMap = new Map<bigint, any>()     // referens till markör-objektet (uppdateras live av 8th Wall)
+const lockOffsetMap = new Map<bigint, any>()    // frusen offset: markör⁻¹ · objektWorld vid låsning
 
 // Rotations-gizmo (en uppsättning ringar för det ankrade objektet)
 let gizmoGroup: any   = null
@@ -31,11 +33,20 @@ ecs.registerComponent({
     targetName:   ecs.string,    // namnet på bildmålet att låsa mot
     framesToLock: ecs.f32,       // antal stabila träffar innan frysning
     relock:       ecs.boolean,   // true = omkalibrera vid varje ny upptäckt
+    // ── Hybrid-korrigering (mot SLAM-drift) ──────────────────────────────────
+    correct:      ecs.boolean,   // efter lås: glid mot markörens pose när den syns
+    correctSpeed: ecs.f32,       // lerp-faktor per frame (0–1). Lägre = mjukare/långsammare
+    deadband:     ecs.f32,       // ignorera avvikelser mindre än detta (world-enheter)
+    maxJump:      ecs.f32,       // hoppa inte mot mål längre bort än detta (0 = ingen gräns)
   },
   schemaDefaults: {
     targetName:   'fram',
     framesToLock: 6,
     relock:       false,
+    correct:      true,
+    correctSpeed: 0.12,
+    deadband:     0.02,
+    maxJump:      2.0,
   },
   data: {},
 
@@ -216,7 +227,57 @@ ecs.registerComponent({
     // nudga fritt) — skillnaden är att man där får nudga + spara.
     if ((window as any)._calibrateMode) status.target = 'KALIBRERING'
 
-    if (locked && !s.relock) return
+    if (locked) {
+      // Hybrid-korrigering: när markören syns, glid objektet mot den pose den
+      // hade vid lås (markörWorld · frusen offset). Mellan syningar håller SLAM
+      // ställningen; när markören skymtar nollas driften — mjukt, aldrig i hopp.
+      // Inte i kalibrerings-/admin-läge — där nudgar man manuellt och korrigeringen
+      // skulle skriva över de egna justeringarna varje frame markören syns.
+      const calibrating = !!(window as any)._calibrateMode
+      if (s.correct && found && !calibrating && THREE && obj0) {
+        const markerObj = markerObjMap.get(eid)
+        const offset    = lockOffsetMap.get(eid)
+        if (markerObj && offset) {
+          try {
+            if (typeof markerObj.updateWorldMatrix === 'function') markerObj.updateWorldMatrix(true, false)
+            const targetWorld = markerObj.matrixWorld.clone().multiply(offset)
+
+            // Mål i world space (behåll objektets skala — korrigera bara läge/rotation)
+            const tPos = new THREE.Vector3(), tQuat = new THREE.Quaternion(), tScl = new THREE.Vector3()
+            targetWorld.decompose(tPos, tQuat, tScl)
+
+            const curPos = new THREE.Vector3();  obj0.getWorldPosition(curPos)
+            const curQuat = new THREE.Quaternion(); obj0.getWorldQuaternion(curQuat)
+
+            const dist = curPos.distanceTo(tPos)
+            const maxJump = s.maxJump || 0
+            // Dödband: ignorera litet brus. Tak: chasa inte en uppenbart felaktig
+            // markör-detektion långt bort (då är markörtracking bara skräp just då).
+            if (dist >= (s.deadband || 0) && (maxJump <= 0 || dist <= maxJump)) {
+              const a = Math.min(Math.max(s.correctSpeed || 0.12, 0), 1)
+              const nPos  = curPos.clone().lerp(tPos, a)
+              const nQuat = curQuat.clone().slerp(tQuat, a)
+
+              // Skriv tillbaka i objektets LOKALA rum (objektet är nu barn till scenen)
+              const par = obj0.parent
+              const keepScale = new THREE.Vector3(); obj0.getWorldScale(keepScale)
+              const m = new THREE.Matrix4().compose(nPos, nQuat, keepScale)
+              if (par) {
+                if (typeof par.updateWorldMatrix === 'function') par.updateWorldMatrix(true, false)
+                m.premultiply(par.matrixWorld.clone().invert())
+              }
+              const pl = new THREE.Vector3(), ql = new THREE.Quaternion(), sl = new THREE.Vector3()
+              m.decompose(pl, ql, sl)
+              obj0.position.copy(pl); obj0.quaternion.copy(ql); obj0.scale.copy(sl)
+              if (typeof obj0.updateMatrix === 'function') obj0.updateMatrix()
+              if (typeof obj0.updateWorldMatrix === 'function') obj0.updateWorldMatrix(true, false)
+              world.three.notifyChanged(obj0)
+            }
+          } catch (e) { /* noop — håll kvar SLAM-posen om korrigering fallerar */ }
+        }
+      }
+      if (!s.relock) return
+    }
 
     if (!found) {
       hitsMap.set(eid, 0)
@@ -266,6 +327,16 @@ ecs.registerComponent({
       if (THREE && parent) {
         if (typeof parent.updateWorldMatrix === 'function') parent.updateWorldMatrix(true, false)
         markerMatMap.set(eid, parent.matrixWorld.clone())
+
+        // Hybrid: spara markör-objektet (8th Wall uppdaterar dess matris live när
+        // markören trackas) + en FRUSEN offset markör⁻¹ · objektWorld. Efter lås
+        // räknas mål-posen varje frame som aktuellMarkörWorld · offset, och objektet
+        // glider dit → SLAM-drift korrigeras bort utan hopp. Måste beräknas FÖRE
+        // scene.attach (medan obj fortfarande är barn till markören).
+        if (typeof obj.updateWorldMatrix === 'function') obj.updateWorldMatrix(true, false)
+        const offset = parent.matrixWorld.clone().invert().multiply(obj.matrixWorld)
+        lockOffsetMap.set(eid, offset)
+        markerObjMap.set(eid, parent)
       }
 
       if (typeof (scene as any).attach === 'function') {
@@ -293,5 +364,7 @@ ecs.registerComponent({
     hitsMap.delete(component.eid)
     appliedMap.delete(component.eid)
     markerMatMap.delete(component.eid)
+    markerObjMap.delete(component.eid)
+    lockOffsetMap.delete(component.eid)
   },
 })

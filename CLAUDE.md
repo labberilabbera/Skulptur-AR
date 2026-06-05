@@ -25,8 +25,13 @@ kopierat från detta och med utbytta modeller/musik/markör.
   (`expand`). Reglage: `enabled`, `speed`, `boost`, `audioReact`, `expand`.
 - **`world-anchor`** (`world-anchor.ts`) Fryser innehållet i world space efter att
   markören scannats (scene.attach) → står kvar när markören lämnar bilden. Innehåller
-  även **kalibrerings-API** (`window._anchorApi`) som driver admin-UI:t. Reglage:
-  `targetName` ("fram"), `framesToLock`, `relock`.
+  även **kalibrerings-API** (`window._anchorApi`) som driver admin-UI:t. **Hybrid mot
+  SLAM-drift:** efter lås, när markören skymtar i bild, glider innehållet mjukt mot
+  markörens pose (lerp/slerp) så SLAM-hopp/drift korrigeras bort utan ryck — markören
+  behöver bara synas *ibland*. Avstängt i kalibrerings-/admin-läge. Reglage:
+  `targetName` ("fram"), `framesToLock`, `relock`, `correct` (på/av), `correctSpeed`
+  (lerp-faktor, lägre = mjukare), `deadband` (ignorera litet brus), `maxJump` (chasa
+  inte uppenbart felaktiga markör-detektioner längre bort än detta; 0 = ingen gräns).
 
 ## VIKTIGT: 8th Wall exponerar inte alltid vertex-data
 Modeller exporterade med `FB_ngon_encoding` (Polycam/Remesh m.fl.) får **tom**
@@ -60,15 +65,30 @@ data (här `eld-textur.glb`), eller exportera om triangulerat utan ngon. Det fin
 - Komponenter i `src/*.ts` auto-importeras (config/entry-plugin.js).
 - Pusha till GitHub → Vercel bygger om (~1–2 min). `dist/` är gitignored.
 - Commit-meddelanden avslutas med `Co-Authored-By: Claude ...`.
+- **Modeller/musik/markör ligger i `src/assets/`** (inte root-`assets/`). `app.js`
+  pekar på `./assets/music.mp3` → krympta filer läggs i `src/assets/`. (En gammal
+  `assets/music.mp3` i root kan ligga kvar oanvänd; den bundlas inte.)
+- **Håll `src/assets/` rent:** bara de GLB:er som faktiskt används ska ligga kvar —
+  allt i mappen bundlas in i `dist/` och tynger nedladdningen även om det inte används.
+
+### Nytt Vercel-projekt (import från GitHub)
+- **Framework Preset:** Other. **Root Directory:** `./`.
+- **Build Command:** `npm run build`  ·  **Output Directory:** `dist`  ·  Install: default.
+- **Environment Variables** (annars funkar inte kalibrering): `UPSTASH_REDIS_REST_URL`,
+  `UPSTASH_REDIS_REST_TOKEN`, `ADMIN_PASSCODE` — sätt samma värden som övriga skulpturer
+  för delad KV. `ADMIN_PASSCODE` är inte lagrat i repot (läses från env); hämta värdet
+  från ett befintligt projekts Vercel-inställningar.
 
 ## Skapa en ny skulptur (t.ex. Vind)
 1. Kopiera detta repo → ny mapp/repo/Vercel.
-2. Byt modeller (förkolnad + glöd), `assets/music.mp3`, markör (8th Wall Targets,
-   döp den `fram` så slipper du ändra sökvägar).
-3. Ändra `SCULPTURE_ID`, `SCULPTURE_NAME`, ev. `hue`/färger i `index.html`.
+2. Byt modeller (förkolnad + glöd) och `src/assets/music.mp3` i **`src/assets/`**,
+   markör (8th Wall Targets, döp den `fram` så slipper du ändra sökvägar). Ta bort
+   gamla/oanvända GLB:er ur `src/assets/` så de inte bundlas i onödan.
+3. Ändra `SCULPTURE_ID`, `SCULPTURE_NAME`, ev. `hue`/färger i `src/index.html`.
 4. Lägg komponenterna på modellerna (world-anchor + sculpture-fire på modellen som
    exponerar vertexdata; ember-glow på glöd-modellen).
-5. Sätt samma Upstash-env-variabler på Vercel. Kalibrera via `?admin=KOD`.
+5. Vercel-projekt enligt **Nytt Vercel-projekt** ovan (Build Command/Output Directory +
+   samma Upstash-env-variabler). Kalibrera via `?admin=KOD`.
 
 ## Meny-app (separat — BYGGD)
 Ligger i **systermappen `../Meny/`** (eget repo/Vercel, statisk sida, ingen 8th
