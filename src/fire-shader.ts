@@ -32,9 +32,11 @@ export const fireVertexShader = /* glsl */ `
 export const fireFragmentShader = /* glsl */ `
   uniform float time;
   uniform float density;
-  uniform float uAudioLevel;  // 0 = tyst (helt lila), 1 = maxpeak (glödröd vid huvudet)
+  uniform float uAudioLevel;  // 0 = tyst, 1 = maxpeak (glödhett vid huvudet)
   uniform float uSoftness;    // 0 = skarpa inre lågor, 1 = mjuka inre lågor
   uniform float uFeather;     // 0 = skarp kontur, 1 = mjuk urtonad kant (feather)
+  uniform vec3  uColor;       // eldens grundfärg (hex i Studio)
+  uniform float uOpacity;     // 0 = osynlig, 1 = full opacitet
 
   varying vec2  vUv;
   varying float vYNorm;
@@ -82,31 +84,22 @@ export const fireFragmentShader = /* glsl */ `
     // Position inom baren (0 vid benen, 1 vid barens topp)
     float posInBar = clamp(vYNorm / max(barHeight, 0.001), 0.0, 1.0);
 
-    // ── Färggradient inom baren: mörk glöd → röd → orange → gul → glödhett ──
-    vec3 colPurple  = vec3(0.30, 0.03, 0.01);   // ben (basen) — mörk ember (ingen lila)
-    vec3 colBlue    = vec3(0.70, 0.10, 0.02);   // djup orangeröd (ersätter blå)
-    vec3 colYellow  = vec3(1.00, 0.85, 0.10);
-    vec3 colOrange  = vec3(1.00, 0.40, 0.02);
-    vec3 colRed     = vec3(1.00, 0.05, 0.05);
-    vec3 colGlowRed = vec3(1.00, 0.45, 0.30);   // toppen — glödhett
+    // ── Färg styrd av uColor: mörk i vila → full färg → vit-het på toppen ──
+    vec3 cBase = uColor * 0.18;                                  // mörk vilo-ton
+    vec3 cLit  = uColor;                                         // full färg
+    vec3 cHot  = mix(uColor, vec3(1.0, 0.95, 0.7), 0.75);       // het topp mot vit-gul
 
-    vec3 barCol = colPurple;
-    barCol = mix(barCol, colBlue,    smoothstep(0.05, 0.25, posInBar));
-    barCol = mix(barCol, colYellow,  smoothstep(0.25, 0.45, posInBar));
-    barCol = mix(barCol, colOrange,  smoothstep(0.45, 0.65, posInBar));
-    barCol = mix(barCol, colRed,     smoothstep(0.65, 0.85, posInBar));
-    barCol = mix(barCol, colGlowRed, smoothstep(0.85, 1.00, posInBar));
+    vec3 barCol = mix(cBase, cLit, smoothstep(0.0, 0.55, posInBar));
+    barCol = mix(barCol, cHot, smoothstep(0.55, 1.0, posInBar));
 
-    // Området ovanför baren = dämpad mörk ember (vila, ingen lila)
-    vec3 restCol = colPurple * 0.55;
+    // Området ovanför baren = dämpad vilo-ton
+    vec3 restCol = cBase;
 
     vec3 col = mix(restCol, barCol, litFactor);
 
-    // ── Overdrive: vid de högsta tonerna flammar HELA kroppen glödröd ──────
-    // När baren når nära huvudet (audioLevel > 0.78) börjar hela skulpturen
-    // bli glödröd, oavsett vertikal position. Full overdrive vid 1.0.
+    // ── Overdrive: vid de högsta tonerna flammar HELA kroppen het ──────────
     float overdrive = smoothstep(0.78, 1.0, uAudioLevel);
-    col = mix(col, colGlowRed * 1.15, overdrive);
+    col = mix(col, cHot * 1.15, overdrive);
 
     // ── Inre flamm-mjukhet (uSoftness) ─────────────────────────────────────
     // Breddar alfa-övergången i noise-texturen så de inre lågorna blir mjukare.
@@ -120,7 +113,7 @@ export const fireFragmentShader = /* glsl */ `
     // uFeather 0 = skarp kontur, 1 = hela kanten urtonad.
     float edgeFade = 1.0 - smoothstep(1.0 - clamp(uFeather, 0.001, 1.0), 1.0, vFresnel);
 
-    float alpha = baseAlpha * edgeFade * density;
+    float alpha = baseAlpha * edgeFade * density * uOpacity;
 
     gl_FragColor = vec4(col * 1.25, alpha);
   }

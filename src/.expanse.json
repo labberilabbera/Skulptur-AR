@@ -228,7 +228,7 @@
             "showModel": true,
             "softness": 0,
             "density": 0.6,
-            "audioReact": 0.3,
+            "audioReact": 0.25,
             "p1Size": 15,
             "p2Rise": 2,
             "speed": 0.01,

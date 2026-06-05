@@ -39,6 +39,8 @@ ecs.registerComponent({
     softness:   ecs.f32,       // 0 = skarpa inre lågor, 1 = mjuka inre lågor
     feather:    ecs.f32,       // 0 = skarp kontur, 1 = mjuk urtonad kant (Photoshop-feather)
 
+    color:      ecs.string,    // eldens grundfärg (hex, t.ex. #ff6a1a)
+    opacity:    ecs.f32,       // 0 = osynlig, 1 = full opacitet
     density:    ecs.f32,
     speed:      ecs.f32,
     audioReact: ecs.f32,
@@ -61,6 +63,8 @@ ecs.registerComponent({
     softness:   0.6,
     feather:    0.5,
 
+    color:      '#ff6a1a',
+    opacity:    1.0,
     density:    0.85,
     speed:      1.0,
     audioReact: 1.5,
@@ -186,6 +190,8 @@ ecs.registerComponent({
             uInflate:    {value: height * s.inflate},
             uSoftness:   {value: s.softness},
             uFeather:    {value: s.feather},
+            uColor:      {value: new THREE.Color(0xff6a1a)},
+            uOpacity:    {value: 1.0},
           },
           transparent: true, blending: THREE.AdditiveBlending,
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
@@ -331,6 +337,8 @@ ecs.registerComponent({
         mat.uniforms.uInflate.value    = (mat.userData.height ?? 1) * s.inflate
         mat.uniforms.uSoftness.value   = s.softness
         mat.uniforms.uFeather.value    = s.feather
+        mat.uniforms.uOpacity.value    = s.opacity
+        try { if (s.color) mat.uniforms.uColor.value.set(s.color) } catch (e) { /* ogiltig hex */ }
 
         // Räkna om modellens Y-spann i VÄRLDEN (så VU-baren reser sig rakt upp
         // även när modellen är roterad). 8 hörn av bounding box → billigt.
