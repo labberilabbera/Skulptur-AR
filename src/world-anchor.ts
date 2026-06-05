@@ -282,6 +282,10 @@ ecs.registerComponent({
       status.locked = true
       status.err = undefined
       console.log('[world-anchor] låst i world space')
+      // Sluta leta efter bildmålet → inga om-lokaliserings-hopp efter låsning
+      if (!s.relock && typeof (window as any)._onAnchorLocked === 'function') {
+        try { (window as any)._onAnchorLocked() } catch (e) { /* */ }
+      }
     } catch (err: any) {
       status.err = String((err && err.message) || err)
       console.warn('[world-anchor] kunde inte låsa:', err)
