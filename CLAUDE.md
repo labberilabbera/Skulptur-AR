@@ -52,6 +52,10 @@ data (här `eld-textur.glb`), eller exportera om triangulerat utan ngon. Det fin
 
 ## Kalibrering / Admin (placera AR rätt på fysiska skulpturen)
 - `?calibrate=1` = nudge-läge (lokalt). `?admin=KOD` = nudge + **SPARA** till servern.
+- **Admin-meny-loop:** öppna **meny-appen** med `?admin=KOD` → välj skulptur (koden
+  skickas vidare som `?admin=KOD`) → placera → SPARA → appen åker automatiskt tillbaka
+  till admin-menyn för nästa skulptur (✕ gör detsamma). Besökare utan `?admin` ser
+  vanliga menyn. Styrs av `MENU_URL` + `adminCode` i `src/index.html`.
 - Verktyg: Flytta (dra), Rotera (gizmo-ringar X/Y/Z), Skala (dra/nyp). Rörelser
   kamera-relativa. Låser först mot markören, sedan nudgar man fritt.
 - Placeringen sparas i **Upstash Redis (KV)** via `api/calibration.js` och hämtas av

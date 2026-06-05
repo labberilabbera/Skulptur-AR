@@ -435,7 +435,15 @@
     const goToMenuOrEnd = () => {
       const audio = window._arAudio
       if (audio) audio.pause()
-      if (MENU_URL) { location.href = MENU_URL; return }
+      if (MENU_URL) {
+        // I admin-läge: tillbaka till admin-menyn (behåll ?admin=KODEN) så man
+        // kan välja nästa skulptur att placera. Annars vanliga menyn.
+        const code = new URLSearchParams(location.search).get('admin')
+        location.href = code
+          ? MENU_URL + (MENU_URL.includes('?') ? '&' : '?') + 'admin=' + encodeURIComponent(code)
+          : MENU_URL
+        return
+      }
       arOverlay.classList.remove('visible')
       exitBtn.style.display = 'none'
       endScreen.classList.add('visible')
@@ -577,7 +585,13 @@
           body: JSON.stringify({id: SCULPTURE_ID, passcode: adminCode, pos: t.pos, rot: t.rot, scale: t.scale}),
         })
           .then(r => r.json().then(j => ({ok: r.ok, j})))
-          .then(({ok, j}) => { saveStatus.textContent = ok ? 'Sparat ✓' : ('Fel: ' + (j.error || '')) })
+          .then(({ok, j}) => {
+            saveStatus.textContent = ok ? 'Sparat ✓ — tillbaka till menyn…' : ('Fel: ' + (j.error || ''))
+            // Lyckad sparning → tillbaka till admin-menyn för nästa skulptur.
+            if (ok && MENU_URL) setTimeout(() => {
+              location.href = MENU_URL + (MENU_URL.includes('?') ? '&' : '?') + 'admin=' + encodeURIComponent(adminCode)
+            }, 1500)
+          })
           .catch(() => { saveStatus.textContent = 'Nätverksfel' })
       })
     }
