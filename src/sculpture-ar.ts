@@ -45,6 +45,11 @@ ecs.registerComponent({
     speed:      ecs.f32,
     audioReact: ecs.f32,
 
+    // Tung-vajning (för flam-modeller med UV uppifrån-ner). swayAmp 0 = av.
+    swayAmp:    ecs.f32,       // hur mycket tungorna vajar (andel av höjd)
+    swaySpeed:  ecs.f32,       // hur snabbt de vajar
+    swayBase:   ecs.f32,       // var vajningen börjar (UV.y 0–1): under = stilla
+
     p1Count:    ecs.f32,
     p1Size:     ecs.f32,
     p1Speed:    ecs.f32,
@@ -68,6 +73,10 @@ ecs.registerComponent({
     density:    0.85,
     speed:      1.0,
     audioReact: 1.5,
+
+    swayAmp:    0.0,    // av som default → påverkar inte skulptur-modeller
+    swaySpeed:  1.5,
+    swayBase:   0.3,
 
     p1Count:    0.8,
     p1Size:     14.0,
@@ -192,6 +201,9 @@ ecs.registerComponent({
             uFeather:    {value: s.feather},
             uColor:      {value: new THREE.Color(0xff6a1a)},
             uOpacity:    {value: 1.0},
+            uSway:       {value: height * s.swayAmp},
+            uSwaySpeed:  {value: s.swaySpeed},
+            uSwayBase:   {value: s.swayBase},
           },
           transparent: true, blending: THREE.AdditiveBlending,
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
@@ -339,6 +351,9 @@ ecs.registerComponent({
         mat.uniforms.uFeather.value    = s.feather
         mat.uniforms.uOpacity.value    = s.opacity
         mat.uniforms.uColor.value.setHSL(((s.hue % 1) + 1) % 1, 1.0, 0.5)
+        mat.uniforms.uSway.value       = (mat.userData.height ?? 1) * s.swayAmp
+        mat.uniforms.uSwaySpeed.value  = s.swaySpeed
+        mat.uniforms.uSwayBase.value   = s.swayBase
 
         // Räkna om modellens Y-spann i VÄRLDEN (så VU-baren reser sig rakt upp
         // även när modellen är roterad). 8 hörn av bounding box → billigt.

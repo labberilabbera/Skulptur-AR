@@ -20,6 +20,12 @@ kopierat från detta och med utbytta modeller/musik/markör.
   `inflate`, `softness`, `feather`, `hue` (0–1 färg), `opacity`, `density`, `speed`,
   `audioReact`, `p1*`/`p2*` (partiklar). Ljud-reaktiv "VU-bar" reser sig i
   **världens** upp-riktning. Partiklar och VU-bar är world-up-baserade (ej lokal Y).
+  - **Flam-modell (stiliserad eld som EGEN modell):** lägg `sculpture-fire` på flam-
+    modellen med `showModel:false` → modellens yta blir elden (skulpturen syns igenom).
+    **Tung-vajning** animerar flamtopparna i vertex-shadern: `swayAmp` (andel av höjd,
+    0 = av), `swaySpeed`, `swayBase` (UV.y där vajningen börjar — under = stilla).
+    Kräver modell med **UV uppifrån-ner** (bas=0, spets=1) + triangulerad (ngon-fällan).
+    swayAmp default 0 → påverkar inte vanliga skulptur-modeller.
 - **`ember-glow`** (`ember-glow.ts`) Lägg på glöd-modellen. Gör materialet additivt
   och animerar glöden (andning + flöde + ljud-puls). Växer utåt på musikens toppar
   (`expand`). Reglage: `enabled`, `speed`, `boost`, `audioReact`, `expand`.

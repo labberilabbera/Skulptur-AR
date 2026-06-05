@@ -3,6 +3,12 @@ export const fireVertexShader = /* glsl */ `
   uniform float uWorldYMax;
   uniform float uInflate;     // hur långt eldskalet blåses ut längs normalen (modell-enheter)
 
+  // ── Tung-vajning (för flam-modeller med UV uppifrån-ner) ──────────────────
+  uniform float time;
+  uniform float uSway;        // amplitud (modell-enheter, höjd-skalad i JS). 0 = av
+  uniform float uSwaySpeed;   // hur snabbt tungorna vajar
+  uniform float uSwayBase;    // var vajningen börjar (UV.y): under = stilla, över = vajar
+
   varying vec2  vUv;
   varying float vYNorm;       // 0 = ben (lägst i världen), 1 = huvud (högst)
   varying float vFresnel;     // 0 = ytan mot kameran, 1 = silhuettkant
@@ -10,8 +16,22 @@ export const fireVertexShader = /* glsl */ `
   void main() {
     vUv = uv;
 
+    // ── Tungorna vajar: mask från UV.y (stilla vid bas, fladdrar mot spets),
+    //    per-tunga fas härledd ur vertexens xz-läge → varje tunga i egen takt.
+    vec3 base = position + normal * uInflate;
+    if (uSway > 0.0) {
+      float hMask = smoothstep(uSwayBase, 1.0, uv.y);
+      float ph    = dot(position.xz, vec2(12.9, 7.3));
+      vec3  off   = vec3(
+        sin(time * uSwaySpeed + ph),
+        0.0,
+        cos(time * uSwaySpeed * 1.3 + ph * 1.7)
+      ) * (uSway * hMask);
+      base += off;
+    }
+
     // ── Blås ut skalet längs normalen → elden blir större än skulpturen ──────
-    vec3 inflated = position + normal * uInflate;
+    vec3 inflated = base;
     vec4 wpos     = modelMatrix * vec4(inflated, 1.0);
 
     // VU-bar mappas mot VÄRLDENS upp-riktning, så den reser sig rakt upp oavsett
