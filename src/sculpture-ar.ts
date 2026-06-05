@@ -48,7 +48,7 @@ ecs.registerComponent({
     // Tung-vajning (för flam-modeller med UV uppifrån-ner). swayAmp 0 = av.
     swayAmp:    ecs.f32,       // hur mycket tungorna vajar (andel av höjd)
     swaySpeed:  ecs.f32,       // hur snabbt de vajar
-    swayBase:   ecs.f32,       // var vajningen börjar (UV.y 0–1): under = stilla
+    swayBase:   ecs.f32,       // var vajningen börjar (0–1 av höjden): under = stilla
 
     p1Count:    ecs.f32,
     p1Size:     ecs.f32,
@@ -204,6 +204,8 @@ ecs.registerComponent({
             uSway:       {value: height * s.swayAmp},
             uSwaySpeed:  {value: s.swaySpeed},
             uSwayBase:   {value: s.swayBase},
+            uLocalYMin:  {value: yMin},   // lokal höjd för vajnings-masken (konstant)
+            uLocalYMax:  {value: yMax},
           },
           transparent: true, blending: THREE.AdditiveBlending,
           depthWrite: false, depthTest: false, side: THREE.DoubleSide,
