@@ -185,22 +185,8 @@ ecs.registerComponent({
       } catch (e) { /* noop */ }
     }
 
-    // Applicera sparad kalibrering (från servern) en gång när objektet finns.
-    // Sätter den LOKALA transformen = exakt det admin sparat.
-    const saved = (window as any)._savedCalibration
-    if (obj0 && saved && !appliedMap.get(eid)) {
-      try {
-        if (Array.isArray(saved.pos))   obj0.position.set(saved.pos[0], saved.pos[1], saved.pos[2])
-        if (Array.isArray(saved.rot)) {
-          const r = (d: number) => d * Math.PI / 180
-          obj0.rotation.set(r(saved.rot[0]), r(saved.rot[1]), r(saved.rot[2]))
-        }
-        if (typeof saved.scale === 'number') obj0.scale.setScalar(saved.scale)
-        world.three.notifyChanged(obj0)
-        appliedMap.set(eid, true)
-        console.log('[world-anchor] applicerade sparad kalibrering')
-      } catch (e) { /* noop */ }
-    }
+    // (Sparad kalibrering appliceras vid LÅSNING längre ner — inte här —
+    //  så att modell-laddningen inte hinner skriva över den.)
 
     // Är bildmålet just nu spårat? (sätts av pipeline-lyssnaren i index.html)
     // Om targetName är tomt: lås på vilket bildmål som helst som hittas.
@@ -247,10 +233,23 @@ ecs.registerComponent({
     if (!obj)   { status.err = 'inget 3d-objekt'; return }
     if (!scene) { status.err = 'ingen scen';      return }
     try {
-      // Spara markörens (förälderns) world-pose vid låsning — används för att
-      // räkna om nudge-justeringar till markör-relativ offset vid SPARA.
       const THREE = (window as any).THREE
       const parent = obj.parent
+
+      // Applicera sparad kalibrering som LOKAL transform precis innan frysning.
+      // Görs här (inte kontinuerligt) så att modell-laddning inte hinner skriva
+      // över den. obj.world blir då förälder · sparad-offset → fryses rätt.
+      const saved = (window as any)._savedCalibration
+      if (saved) {
+        const rad = (d: number) => d * Math.PI / 180
+        if (Array.isArray(saved.pos)) obj.position.set(saved.pos[0], saved.pos[1], saved.pos[2])
+        if (Array.isArray(saved.rot)) obj.rotation.set(rad(saved.rot[0]), rad(saved.rot[1]), rad(saved.rot[2]))
+        if (typeof saved.scale === 'number') obj.scale.setScalar(saved.scale)
+        if (typeof obj.updateWorldMatrix === 'function') obj.updateWorldMatrix(true, false)
+      }
+
+      // Spara markörens (förälderns) world-pose vid låsning — används för att
+      // räkna om nudge-justeringar till markör-relativ offset vid SPARA.
       if (THREE && parent) {
         if (typeof parent.updateWorldMatrix === 'function') parent.updateWorldMatrix(true, false)
         markerMatMap.set(eid, parent.matrixWorld.clone())
