@@ -347,7 +347,7 @@
   const SCULPTURE_NAME = (new URLSearchParams(location.search).get('name')) || 'Eld'
   // Meny-appens URL: dit man går vid ✕ och när upplevelsen är slut. Tom = av
   // (då visas "skanna nästa QR"-skärmen istället). Fyll i när menyn är deployad.
-  const MENU_URL = ''
+  const MENU_URL = 'https://ar-skulptur-meny.vercel.app/'
   window.addEventListener('DOMContentLoaded', () => {
     const n = document.getElementById('scan-name')
     if (n) n.textContent = SCULPTURE_NAME
