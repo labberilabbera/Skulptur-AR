@@ -238,7 +238,9 @@
             "p2Speed": 0.003,
             "p2Size": 7,
             "p2Count": 0.5,
-            "enabled": true
+            "enabled": true,
+            "opacity": 1,
+            "hue": 6.060000000000002
           }
         }
       },

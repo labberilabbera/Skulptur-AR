@@ -39,7 +39,7 @@ ecs.registerComponent({
     softness:   ecs.f32,       // 0 = skarpa inre lågor, 1 = mjuka inre lågor
     feather:    ecs.f32,       // 0 = skarp kontur, 1 = mjuk urtonad kant (Photoshop-feather)
 
-    color:      ecs.string,    // eldens grundfärg (hex, t.ex. #ff6a1a)
+    hue:        ecs.f32,       // eldens färg: 0=röd, 0.06=orange, 0.15=gul, 0.33=grön, 0.66=blå, 0.83=lila
     opacity:    ecs.f32,       // 0 = osynlig, 1 = full opacitet
     density:    ecs.f32,
     speed:      ecs.f32,
@@ -63,7 +63,7 @@ ecs.registerComponent({
     softness:   0.6,
     feather:    0.5,
 
-    color:      '#ff6a1a',
+    hue:        0.06,
     opacity:    1.0,
     density:    0.85,
     speed:      1.0,
@@ -338,7 +338,7 @@ ecs.registerComponent({
         mat.uniforms.uSoftness.value   = s.softness
         mat.uniforms.uFeather.value    = s.feather
         mat.uniforms.uOpacity.value    = s.opacity
-        try { if (s.color) mat.uniforms.uColor.value.set(s.color) } catch (e) { /* ogiltig hex */ }
+        mat.uniforms.uColor.value.setHSL(((s.hue % 1) + 1) % 1, 1.0, 0.5)
 
         // Räkna om modellens Y-spann i VÄRLDEN (så VU-baren reser sig rakt upp
         // även när modellen är roterad). 8 hörn av bounding box → billigt.
