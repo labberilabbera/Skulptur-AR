@@ -82,9 +82,9 @@ export const fireFragmentShader = /* glsl */ `
     // Position inom baren (0 vid benen, 1 vid barens topp)
     float posInBar = clamp(vYNorm / max(barHeight, 0.001), 0.0, 1.0);
 
-    // ── Färggradient inom baren: lila → blå → gul → orange → röd → glödröd ──
-    vec3 colPurple  = vec3(0.45, 0.05, 0.80);   // ben (basen)
-    vec3 colBlue    = vec3(0.15, 0.30, 1.00);
+    // ── Färggradient inom baren: mörk glöd → röd → orange → gul → glödhett ──
+    vec3 colPurple  = vec3(0.30, 0.03, 0.01);   // ben (basen) — mörk ember (ingen lila)
+    vec3 colBlue    = vec3(0.70, 0.10, 0.02);   // djup orangeröd (ersätter blå)
     vec3 colYellow  = vec3(1.00, 0.85, 0.10);
     vec3 colOrange  = vec3(1.00, 0.40, 0.02);
     vec3 colRed     = vec3(1.00, 0.05, 0.05);
@@ -97,7 +97,7 @@ export const fireFragmentShader = /* glsl */ `
     barCol = mix(barCol, colRed,     smoothstep(0.65, 0.85, posInBar));
     barCol = mix(barCol, colGlowRed, smoothstep(0.85, 1.00, posInBar));
 
-    // Området ovanför baren = dämpad lila (vila)
+    // Området ovanför baren = dämpad mörk ember (vila, ingen lila)
     vec3 restCol = colPurple * 0.55;
 
     vec3 col = mix(restCol, barCol, litFactor);

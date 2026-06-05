@@ -214,10 +214,10 @@
           "name": "ember-glow",
           "parameters": {
             "speed": 0.3,
-            "audioReact": 2,
+            "audioReact": 1,
             "boost": 0.1,
             "expand": 0.01,
-            "enabled": false
+            "enabled": true
           }
         },
         "4a61a2a0-c2e3-4303-8fef-2c7ee4c2ceca": {
