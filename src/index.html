@@ -379,16 +379,27 @@
       startScreen.classList.remove('hidden')
     }
 
+    // Starta musiken (en gång) — anropas när markören scannas
+    window._startMusic = () => {
+      const audio = window._arAudio
+      if (!audio || window._musicStarted) return
+      window._musicStarted = true
+      try { audio.currentTime = 0 } catch (e) { /* */ }
+      audio.play().catch(err => console.warn('[audio] play failed:', err))
+    }
+
     // Starta-knapp — startar musik + scan-overlay. Tillstånd är redan beviljat
     // här (kameran är igång), så scan-overlayn kan visas direkt utan risk.
     const startExperience = (showAROverlay = true) => {
       if (experienceStarted) return
       experienceStarted = true
-      // Sätt upp audio-analysern (audioReact) och starta musiken
+      // Sätt upp audio-analysern (audioReact). Musiken startar dock först när
+      // markören scannas (imagefound) — men vi "låser upp" ljudet här i
+      // user-gesten, annars blockerar webbläsaren autoplay senare.
       if (window._setupAudioAnalyser) window._setupAudioAnalyser()
       const audio = window._arAudio
       if (audio) {
-        audio.play().catch(err => console.warn('[audio] play failed:', err))
+        audio.play().then(() => audio.pause()).catch(() => {})
       }
       startScreen.classList.add('hidden')
       exitBtn.style.display = 'flex'   // visa avsluta-knappen under upplevelsen
@@ -584,6 +595,7 @@
             window._imageTargetState = window._imageTargetState || {}
             window._imageTargetState[detail.name] = true
             if (detail.name !== 'fram') return
+            if (window._startMusic) window._startMusic()   // musiken startar vid scan
             const overlay = document.getElementById('ar-overlay')
             overlay.classList.add('hidden')
             setTimeout(() => { overlay.classList.remove('visible') }, 900)
