@@ -39,10 +39,25 @@ function setupAnalyser(audioEl) {
 }
 
 // ── Skapa audio direkt vid sidladdning, inte vänta på XR ─────────────────
-const audio = new Audio('./assets/music.mp3')
+const audio = new Audio('./assets/music.mp3')   // direkt-URL så ljudet kan låsas upp tidigt
 audio.loop = true
 audio.preload = 'auto'
+audio.load()
 window._arAudio = audio
+
+// Förladda HELA musikfilen i minnet (blob) → stabilare uppspelning, inga
+// streaming-/ombuffrings-glitchar mitt i låten. Byter src till in-memory-blob
+// så fort den laddats (innan musiken startat).
+fetch('./assets/music.mp3')
+  .then(r => r.blob())
+  .then((b) => {
+    if (window._musicStarted) return            // spelar redan → rör inte
+    try {
+      audio.src = URL.createObjectURL(b)
+      audio.load()
+    } catch (e) { /* behåll direkt-URL */ }
+  })
+  .catch(() => { /* behåll direkt-URL som fallback */ })
 
 // Exponera setupAnalyser så STARTA-knappen kan sätta upp audio-reaktiviteten
 window._setupAudioAnalyser = () => setupAnalyser(audio)
