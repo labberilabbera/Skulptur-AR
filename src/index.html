@@ -339,6 +339,9 @@
   const SCULPTURE_ID = (new URLSearchParams(location.search).get('id')) || 'eld'
   // Namnet som visas på scan-skärmen ("Scanna Eld"). Byt per skulptur.
   const SCULPTURE_NAME = (new URLSearchParams(location.search).get('name')) || 'Eld'
+  // Meny-appens URL: dit man går vid ✕ och när upplevelsen är slut. Tom = av
+  // (då visas "skanna nästa QR"-skärmen istället). Fyll i när menyn är deployad.
+  const MENU_URL = ''
   window.addEventListener('DOMContentLoaded', () => {
     const n = document.getElementById('scan-name')
     if (n) n.textContent = SCULPTURE_NAME
@@ -415,16 +418,27 @@
     }
     startBtn.addEventListener('click', () => startExperience(true))
 
-    // Avsluta-knapp — stoppa upplevelsen och visa "skanna nästa QR"-skärm
-    exitBtn.addEventListener('click', () => {
+    // Gå tillbaka till meny-appen (om MENU_URL satt), annars visa slutskärm
+    const goToMenuOrEnd = () => {
       const audio = window._arAudio
       if (audio) audio.pause()
+      if (MENU_URL) { location.href = MENU_URL; return }
       arOverlay.classList.remove('visible')
       exitBtn.style.display = 'none'
       endScreen.classList.add('visible')
       // Stäng av kameran för att spara batteri (om API:t finns)
       try { if (window.XR8 && XR8.stop) XR8.stop() } catch (e) { /* noop */ }
-    })
+    }
+
+    // Avsluta-knapp (✕) → tillbaka till menyn / slutskärm
+    exitBtn.addEventListener('click', goToMenuOrEnd)
+
+    // När musiken (upplevelsen) tar slut → automatiskt tillbaka till menyn
+    const arAudio = window._arAudio
+    if (arAudio && MENU_URL) {
+      arAudio.loop = false
+      arAudio.addEventListener('ended', goToMenuOrEnd)
+    }
 
     // Starta om — ladda om sidan för en ren omstart av denna upplevelse
     restartBtn.addEventListener('click', () => location.reload())
