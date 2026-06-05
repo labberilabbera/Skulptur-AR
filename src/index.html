@@ -353,16 +353,6 @@
     .then(d => { if (d && d.calibration) window._savedCalibration = d.calibration })
     .catch(() => { /* ingen sparad placering / API ej uppe än */ })
 
-  // Anropas av world-anchor när innehållet låsts: sluta leta efter bildmålet så
-  // 8th Wall inte gör pose-korrigeringar (hopp) när markören skymtar förbi.
-  // World tracking (SLAM) håller innehållet stadigt utan detektion.
-  window._onAnchorLocked = () => {
-    try {
-      if (window.XR8 && XR8.XrController && XR8.XrController.configure) {
-        XR8.XrController.configure({imageTargetData: []})
-      }
-    } catch (e) { console.warn('[anchor] kunde inte stoppa bildmål:', e) }
-  }
 
   // Delad state mellan load- och xrloaded-hanterarna.
   // VIKTIGT: startskärmen får INTE visas medan 8th Wall ber om kamera-/
