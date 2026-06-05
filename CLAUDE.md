@@ -70,7 +70,12 @@ data (här `eld-textur.glb`), eller exportera om triangulerat utan ngon. Det fin
    exponerar vertexdata; ember-glow på glöd-modellen).
 5. Sätt samma Upstash-env-variabler på Vercel. Kalibrera via `?admin=KOD`.
 
-## Meny-app (separat, planerad)
-1 QR → meny-webapp med stora ikoner per skulptur → tryck → går till respektive
-skulptur-deploy. Skulptur-appen ska gå **tillbaka till menyn** vid ✕ och när
-upplevelsen är slut (`MENU_URL`).
+## Meny-app (separat — BYGGD)
+Ligger i **systermappen `../Meny/`** (eget repo/Vercel, statisk sida, ingen 8th
+Wall). 1 QR → meny med stora ikoner per skulptur → tryck → "Scanna X" → går till
+respektive skulptur-deploy. Config-listan `SCULPTURES` i `Meny/index.html` styr
+namn/ikon/markör/url per skulptur. Se `../Meny/CLAUDE.md`.
+
+Denna skulptur-app går **tillbaka till menyn** vid ✕ och när musiken tar slut —
+styrs av konstanten **`MENU_URL`** överst i `src/index.html` (sätt den till
+menyns URL när menyn är deployad; tom = nuvarande slutskärm istället).
