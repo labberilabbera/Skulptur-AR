@@ -23,17 +23,26 @@ kopierat från detta och med utbytta modeller/musik/markör.
 - **`ember-glow`** (`ember-glow.ts`) Lägg på glöd-modellen. Gör materialet additivt
   och animerar glöden (andning + flöde + ljud-puls). Växer utåt på musikens toppar
   (`expand`). Reglage: `enabled`, `speed`, `boost`, `audioReact`, `expand`.
-- **`world-anchor`** (`world-anchor.ts`) Fryser innehållet i world space efter att
-  markören scannats (scene.attach) → står kvar när markören lämnar bilden. Innehåller
-  även **kalibrerings-API** (`window._anchorApi`) som driver admin-UI:t. Reglage:
-  `targetName` ("fram"), `framesToLock`, `relock`.
-  - **OBS – stabilitet:** lås = byt till ren SLAM (scene.attach) och **lita inte på
-    bildmålet efteråt**. Detta är 8th Walls egen rekommendation (SLAM efter
-    `imagefound`); bildmåls-pose är inneboende hackig och ska inte användas för
-    kontinuerlig korrigering — en testad "hybrid" som lerpa:de mot markören varje
-    frame gjorde trackingen klart sämre (objektet vandrade). Plötsliga hopp i ren
-    SLAM = relokalisering och styrs mest av **miljön**: feature-rik/icke-repetitiv
-    yta + bra ljus ger stabilast tracking.
+- **`world-anchor`** (`world-anchor.ts`) **MARKÖR-PRIMÄR tracking** (för markör på
+  podiets topplatta man tittar ner på). Två lägen:
+  - **Besökare:** innehållet följer bildmålet KONTINUERLIGT, men posen **adaptivt
+    dämpas** (one-euro-liknande: mest dämpning vid små jitter, följsam vid verklig
+    rörelse) → stabilt utan att drifta. Markören är enda referensen; SLAM-drift spelar
+    ingen roll. Tappas markören kort hålls senaste pose. Reglage: `smoothing` (bas-
+    dämpning, lägre = mjukare/mer lag), `responsiveness` (hur snabbt den hänger med),
+    `snapDist` (snäpp direkt om målet hoppar längre än detta; 0 = aldrig), `holdWhenLost`.
+  - **Admin/kalibrering** (`?admin`/`?calibrate`): OFÖRÄNDRAT — fryser mot markören
+    (scene.attach), nudga fritt, SPARA räknar om till **markör-relativ offset**.
+    Sparformatet (pos/rot/scale relativt markören) är identiskt → gamla kalibreringar
+    och admin-UI:t (`window._anchorApi`) funkar som förut.
+  - Gemensamma reglage: `targetName` ("fram"), `framesToLock` (stabila träffar innan
+    första placering), `relock` (endast calibrate).
+  - **Historik/varför:** tidig "frys till ren SLAM efter scan" driver iväg där SLAM är
+    svag (öppet hav/himmel). En "hybrid" som korrigerade en FRYST pose mot markören
+    floppade (objektet vandrade). Markör-primärt (markören = enda sanning, kontinuerligt
+    + dämpat) är rätt när markören syns hela tiden (topplatta, titta ner). Markör-krav:
+    stor (≥A3, fyll plattan), **matt** (ej blank → speglar himmel/sol), högkontrast,
+    icke-repetitiv; gärna lätt lutad mot betraktaren om man tittar snett.
 
 ## VIKTIGT: 8th Wall exponerar inte alltid vertex-data
 Modeller exporterade med `FB_ngon_encoding` (Polycam/Remesh m.fl.) får **tom**
