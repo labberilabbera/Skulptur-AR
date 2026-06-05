@@ -89,11 +89,20 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 32px;
+    gap: 24px;
+    padding: 0 28px;
   }
+  #scan-img {
+    width: 200px;
+    max-width: 60vw;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 160, 40, 0.7);
+    box-shadow: 0 0 30px rgba(255, 120, 20, 0.35);
+  }
+  #ar-text #scan-name { color: rgba(255, 180, 80, 1); font-weight: 500; }
   #scan-ring {
-    width: 120px;
-    height: 120px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     border: 3px solid rgba(255, 255, 255, 0.15);
     border-top-color: rgba(255, 160, 40, 0.9);
@@ -269,8 +278,9 @@
 <!-- AR-overlay (visas efter start) -->
 <div id="ar-overlay">
   <div id="ar-overlay-inner">
+    <img id="scan-img" src="image-targets/fram_original.png" alt="" onerror="this.style.display='none'">
+    <p id="ar-text">Scanna <b id="scan-name">Eld</b></p>
     <div id="scan-ring"></div>
-    <p id="ar-text">Rikta kameran mot skulpturen</p>
   </div>
 </div>
 
@@ -327,6 +337,12 @@
   // Byt SCULPTURE_ID per skulptur/deploy (eld, luft, ...). Kan även sättas
   // via ?id=… i URL:en. Avgör vilken placering som hämtas/sparas på servern.
   const SCULPTURE_ID = (new URLSearchParams(location.search).get('id')) || 'eld'
+  // Namnet som visas på scan-skärmen ("Scanna Eld"). Byt per skulptur.
+  const SCULPTURE_NAME = (new URLSearchParams(location.search).get('name')) || 'Eld'
+  window.addEventListener('DOMContentLoaded', () => {
+    const n = document.getElementById('scan-name')
+    if (n) n.textContent = SCULPTURE_NAME
+  })
 
   // Hämta sparad placering så fort som möjligt → world-anchor applicerar den.
   fetch(`/api/calibration?id=${encodeURIComponent(SCULPTURE_ID)}`)
