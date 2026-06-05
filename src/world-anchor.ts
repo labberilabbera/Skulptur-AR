@@ -173,13 +173,18 @@ ecs.registerComponent({
       }
     }
 
-    // Positionera/skala rotations-gizmot vid objektet när det visas
+    // Positionera/skala rotations-gizmot vid objektet när det visas.
+    // Storlek baseras på en mindre faktor av modellens största mått (inte
+    // bounding-sphere-radien som för en hög figur blir enorm). Centreras på
+    // bounding box-mitten.
     if (THREE && obj0 && gizmoGroup && gizmoVisible) {
       try {
-        const box = new THREE.Box3().setFromObject(obj0)
-        const sph = box.getBoundingSphere(new THREE.Sphere())
-        gizmoGroup.position.copy(sph.center)
-        gizmoGroup.scale.setScalar(Math.max(sph.radius * 1.25, 0.15))
+        const box    = new THREE.Box3().setFromObject(obj0)
+        const center = box.getCenter(new THREE.Vector3())
+        const size   = box.getSize(new THREE.Vector3())
+        const maxDim = Math.max(size.x, size.y, size.z)
+        gizmoGroup.position.copy(center)
+        gizmoGroup.scale.setScalar(Math.max(maxDim * 0.32, 0.05))
         if (typeof gizmoGroup.updateMatrix === 'function') gizmoGroup.updateMatrix()
         world.three.notifyChanged(gizmoGroup)
       } catch (e) { /* noop */ }
