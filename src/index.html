@@ -406,14 +406,20 @@
       }
       startScreen.classList.add('hidden')
       exitBtn.style.display = 'flex'   // visa avsluta-knappen under upplevelsen
-      setTimeout(() => {
+
+      // Avslöja scan-overlay + kalibrerings-UI. Görs först när kameran ÄR igång
+      // (tillstånd beviljat) — annars kan eld-bilden/gestlagret täcka tillåt-dialogen.
+      const revealAfterStart = () => {
         startScreen.style.display = 'none'
         if (showAROverlay) arOverlay.classList.add('visible')
-        // Visa kalibrerings-UI:t först nu (täcker då inte START/tillåt-dialog)
         if (window._calibrateMode) {
           document.getElementById('calib').classList.add('visible')
           document.getElementById('gesture-layer').classList.add('on')
         }
+      }
+      setTimeout(() => {
+        if (cameraReady) revealAfterStart()
+        else window._deferredReveal = revealAfterStart   // visas när kameran är redo
       }, 650)
     }
     startBtn.addEventListener('click', () => startExperience(true))
@@ -599,6 +605,8 @@
         if (status === 'hasVideo') {
           cameraReady = true
           if (window._revealStartScreen) window._revealStartScreen()
+          // Om STARTA trycktes innan kameran var redo (fallback) — avslöja nu
+          if (window._deferredReveal) { window._deferredReveal(); window._deferredReveal = null }
         }
       },
       listeners: [
