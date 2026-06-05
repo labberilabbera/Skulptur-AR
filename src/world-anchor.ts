@@ -248,7 +248,12 @@ ecs.registerComponent({
       if (saved) {
         const rad = (d: number) => d * Math.PI / 180
         if (Array.isArray(saved.pos)) obj.position.set(saved.pos[0], saved.pos[1], saved.pos[2])
-        if (Array.isArray(saved.rot)) obj.rotation.set(rad(saved.rot[0]), rad(saved.rot[1]), rad(saved.rot[2]))
+        if (Array.isArray(saved.rot)) {
+          // Bygg quaternion från EXPLICIT XYZ-Euler (samma ordning som admin
+          // sparar med) → oberoende av objektets rotation.order.
+          const eul = new THREE.Euler(rad(saved.rot[0]), rad(saved.rot[1]), rad(saved.rot[2]), 'XYZ')
+          obj.quaternion.setFromEuler(eul)
+        }
         if (typeof saved.scale === 'number') obj.scale.setScalar(saved.scale)
         // 8th Wall kör manuellt matris-läge → måste tvinga matris-uppdatering,
         // annars "fastnar" inte de satta värdena i objektets matris.
