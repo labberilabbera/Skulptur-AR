@@ -25,13 +25,15 @@ kopierat från detta och med utbytta modeller/musik/markör.
   (`expand`). Reglage: `enabled`, `speed`, `boost`, `audioReact`, `expand`.
 - **`world-anchor`** (`world-anchor.ts`) Fryser innehållet i world space efter att
   markören scannats (scene.attach) → står kvar när markören lämnar bilden. Innehåller
-  även **kalibrerings-API** (`window._anchorApi`) som driver admin-UI:t. **Hybrid mot
-  SLAM-drift:** efter lås, när markören skymtar i bild, glider innehållet mjukt mot
-  markörens pose (lerp/slerp) så SLAM-hopp/drift korrigeras bort utan ryck — markören
-  behöver bara synas *ibland*. Avstängt i kalibrerings-/admin-läge. Reglage:
-  `targetName` ("fram"), `framesToLock`, `relock`, `correct` (på/av), `correctSpeed`
-  (lerp-faktor, lägre = mjukare), `deadband` (ignorera litet brus), `maxJump` (chasa
-  inte uppenbart felaktiga markör-detektioner längre bort än detta; 0 = ingen gräns).
+  även **kalibrerings-API** (`window._anchorApi`) som driver admin-UI:t. Reglage:
+  `targetName` ("fram"), `framesToLock`, `relock`.
+  - **OBS – stabilitet:** lås = byt till ren SLAM (scene.attach) och **lita inte på
+    bildmålet efteråt**. Detta är 8th Walls egen rekommendation (SLAM efter
+    `imagefound`); bildmåls-pose är inneboende hackig och ska inte användas för
+    kontinuerlig korrigering — en testad "hybrid" som lerpa:de mot markören varje
+    frame gjorde trackingen klart sämre (objektet vandrade). Plötsliga hopp i ren
+    SLAM = relokalisering och styrs mest av **miljön**: feature-rik/icke-repetitiv
+    yta + bra ljus ger stabilast tracking.
 
 ## VIKTIGT: 8th Wall exponerar inte alltid vertex-data
 Modeller exporterade med `FB_ngon_encoding` (Polycam/Remesh m.fl.) får **tom**
