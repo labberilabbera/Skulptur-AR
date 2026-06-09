@@ -41,6 +41,7 @@ ecs.registerComponent({
 
     hue:        ecs.f32,       // eldens färg: 0=röd, 0.06=orange, 0.15=gul, 0.33=grön, 0.66=blå, 0.83=lila
     opacity:    ecs.f32,       // 0 = osynlig, 1 = full opacitet
+    idleGlow:   ecs.f32,       // 0 = mörk i tystnad (skulptur), 1 = full eld utan ljud (flam-modell)
     density:    ecs.f32,
     speed:      ecs.f32,
     audioReact: ecs.f32,
@@ -70,6 +71,7 @@ ecs.registerComponent({
 
     hue:        0.06,
     opacity:    1.0,
+    idleGlow:   0.0,    // 0 = oförändrat för skulptur-modeller; sätt ~0.8 för flam-modell
     density:    0.85,
     speed:      1.0,
     audioReact: 1.5,
@@ -201,6 +203,7 @@ ecs.registerComponent({
             uFeather:    {value: s.feather},
             uColor:      {value: new THREE.Color(0xff6a1a)},
             uOpacity:    {value: 1.0},
+            uIdleGlow:   {value: s.idleGlow},
             uSway:       {value: height * s.swayAmp},
             uSwaySpeed:  {value: s.swaySpeed},
             uSwayBase:   {value: s.swayBase},
@@ -352,6 +355,7 @@ ecs.registerComponent({
         mat.uniforms.uSoftness.value   = s.softness
         mat.uniforms.uFeather.value    = s.feather
         mat.uniforms.uOpacity.value    = s.opacity
+        mat.uniforms.uIdleGlow.value   = s.idleGlow
         mat.uniforms.uColor.value.setHSL(((s.hue % 1) + 1) % 1, 1.0, 0.5)
         mat.uniforms.uSway.value       = (mat.userData.height ?? 1) * s.swayAmp
         mat.uniforms.uSwaySpeed.value  = s.swaySpeed

@@ -408,7 +408,15 @@
       // user-gesten, annars blockerar webbläsaren autoplay senare.
       if (window._setupAudioAnalyser) window._setupAudioAnalyser()
       const audio = window._arAudio
-      if (audio) {
+      // Spela musiken direkt (så man hör/ser eldens reaktivitet) i preview:
+      //  - editor/dator-auto-start (showAROverlay === false), eller
+      //  - ?music=1 i URL:en.
+      // På riktig mobil (touch, STARTA-knappen → showAROverlay = true) startar
+      // musiken fortfarande vid scan (imagefound), som tänkt för besökare.
+      const testMusic = /[?&]music=1/.test(location.search) || showAROverlay === false
+      if (testMusic && window._startMusic) {
+        window._startMusic()
+      } else if (audio) {
         audio.play().then(() => audio.pause()).catch(() => {})
       }
       startScreen.classList.add('hidden')

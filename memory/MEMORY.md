@@ -1,0 +1,1 @@
+- [Tracking-strategi havet](tracking-strategy-seaside.md) — skulpturer vid havet → SLAM opålitlig → markör-primärt, väntar på placering från konstnär

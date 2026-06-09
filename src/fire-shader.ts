@@ -60,6 +60,7 @@ export const fireFragmentShader = /* glsl */ `
   uniform float uFeather;     // 0 = skarp kontur, 1 = mjuk urtonad kant (feather)
   uniform vec3  uColor;       // eldens grundfärg (hex i Studio)
   uniform float uOpacity;     // 0 = osynlig, 1 = full opacitet
+  uniform float uIdleGlow;    // 0 = mörk i tystnad (skulptur), 1 = full eld även utan ljud (låga)
 
   varying vec2  vUv;
   varying float vYNorm;
@@ -115,8 +116,12 @@ export const fireFragmentShader = /* glsl */ `
     vec3 barCol = mix(cBase, cLit, smoothstep(0.0, 0.55, posInBar));
     barCol = mix(barCol, cHot, smoothstep(0.55, 1.0, posInBar));
 
-    // Området ovanför baren = dämpad vilo-ton
-    vec3 restCol = cBase;
+    // ── Viloläge ────────────────────────────────────────────────────────────
+    // idleGlow 0 = mörk vilo-ton (skulptur som "tänds" av musik).
+    // idleGlow 1 = full eld-gradient även i tystnad (för flam-modeller) —
+    // mörkare nedtill, het mot toppen (world-Y) så lågan alltid ser levande ut.
+    vec3 idleCol = mix(uColor * 0.55, cHot, smoothstep(0.25, 1.0, vYNorm));
+    vec3 restCol = mix(cBase, idleCol, clamp(uIdleGlow, 0.0, 1.0));
 
     vec3 col = mix(restCol, barCol, litFactor);
 
