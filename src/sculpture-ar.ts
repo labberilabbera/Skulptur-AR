@@ -39,7 +39,10 @@ ecs.registerComponent({
     softness:   ecs.f32,       // 0 = skarpa inre lågor, 1 = mjuka inre lågor
     feather:    ecs.f32,       // 0 = skarp kontur, 1 = mjuk urtonad kant (Photoshop-feather)
 
-    hue:        ecs.f32,       // eldens färg: 0=röd, 0.06=orange, 0.15=gul, 0.33=grön, 0.66=blå, 0.83=lila
+    // Höjd-gradientens färger som hue (0=röd, 0.06=orange, 0.15=gul, 0.33=grön, 0.66=blå)
+    hueBottom:  ecs.f32,       // färg nederst på lågan (default röd)
+    hueMid:     ecs.f32,       // färg i mitten (default orange)
+    hueTop:     ecs.f32,       // färg överst (default gul)
     opacity:    ecs.f32,       // 0 = osynlig, 1 = full opacitet
     idleGlow:   ecs.f32,       // 0 = mörk i tystnad (skulptur), 1 = full eld utan ljud (flam-modell)
     density:    ecs.f32,
@@ -69,7 +72,9 @@ ecs.registerComponent({
     softness:   0.6,
     feather:    0.5,
 
-    hue:        0.06,
+    hueBottom:  0.0,    // röd
+    hueMid:     0.06,   // orange
+    hueTop:     0.13,   // gul
     opacity:    1.0,
     idleGlow:   0.0,    // 0 = oförändrat för skulptur-modeller; sätt ~0.8 för flam-modell
     density:    0.85,
@@ -201,7 +206,9 @@ ecs.registerComponent({
             uInflate:    {value: height * s.inflate},
             uSoftness:   {value: s.softness},
             uFeather:    {value: s.feather},
-            uColor:      {value: new THREE.Color(0xff6a1a)},
+            uColBottom:  {value: new THREE.Color()},
+            uColMid:     {value: new THREE.Color()},
+            uColTop:     {value: new THREE.Color()},
             uOpacity:    {value: 1.0},
             uIdleGlow:   {value: s.idleGlow},
             uSway:       {value: height * s.swayAmp},
@@ -356,7 +363,10 @@ ecs.registerComponent({
         mat.uniforms.uFeather.value    = s.feather
         mat.uniforms.uOpacity.value    = s.opacity
         mat.uniforms.uIdleGlow.value   = s.idleGlow
-        mat.uniforms.uColor.value.setHSL(((s.hue % 1) + 1) % 1, 1.0, 0.5)
+        const wrap = (h: number) => ((h % 1) + 1) % 1
+        mat.uniforms.uColBottom.value.setHSL(wrap(s.hueBottom), 1.0, 0.50)
+        mat.uniforms.uColMid.value.setHSL(wrap(s.hueMid),    1.0, 0.50)
+        mat.uniforms.uColTop.value.setHSL(wrap(s.hueTop),    1.0, 0.55)
         mat.uniforms.uSway.value       = (mat.userData.height ?? 1) * s.swayAmp
         mat.uniforms.uSwaySpeed.value  = s.swaySpeed
         mat.uniforms.uSwayBase.value   = s.swayBase

@@ -58,7 +58,9 @@ export const fireFragmentShader = /* glsl */ `
   uniform float uAudioLevel;  // 0 = tyst, 1 = maxpeak (glödhett vid huvudet)
   uniform float uSoftness;    // 0 = skarpa inre lågor, 1 = mjuka inre lågor
   uniform float uFeather;     // 0 = skarp kontur, 1 = mjuk urtonad kant (feather)
-  uniform vec3  uColor;       // eldens grundfärg (hex i Studio)
+  uniform vec3  uColBottom;   // gradient: färg nederst (röd)
+  uniform vec3  uColMid;      // gradient: färg i mitten (orange)
+  uniform vec3  uColTop;      // gradient: färg överst (ljus orange/gul)
   uniform float uOpacity;     // 0 = osynlig, 1 = full opacitet
   uniform float uIdleGlow;    // 0 = mörk i tystnad (skulptur), 1 = full eld även utan ljud (låga)
 
@@ -103,11 +105,9 @@ export const fireFragmentShader = /* glsl */ `
     // i mitten, ljus orange/gul i toppen. Ljud-baren ändrar bara HUR HÖGT glöden
     // tänds — aldrig hue:n. Därför förblir den röda botten röd när baren reser
     // sig, mitten orange, toppen gul. (Redigera dessa tre färger för att tona om.)
-    vec3 cBottom = vec3(1.00, 0.06, 0.00);   // röd  (botten)
-    vec3 cMid    = vec3(1.00, 0.42, 0.04);   // orange (mitten)
-    vec3 cTop    = vec3(1.00, 0.78, 0.28);   // ljus orange/gul (toppen)
-    vec3 heightCol = mix(cBottom, cMid, smoothstep(0.0, 0.5, vYNorm));
-    heightCol      = mix(heightCol, cTop, smoothstep(0.5, 1.0, vYNorm));
+    // Färgerna sätts via reglage i Studio (hueBottom/hueMid/hueTop → JS).
+    vec3 heightCol = mix(uColBottom, uColMid, smoothstep(0.0, 0.5, vYNorm));
+    heightCol      = mix(heightCol, uColTop, smoothstep(0.5, 1.0, vYNorm));
 
     // ── Ljud-bar: hur högt upp glöden tänds (mjuk kant, ingen skarp linje) ──
     float barHeight = uAudioLevel;
