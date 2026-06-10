@@ -195,6 +195,11 @@
             "p1Rise": 5,
             "p2Count": 1
           }
+        },
+        "4073d03e-35ec-47a1-8d54-cb4ba9a1fb11": {
+          "id": "4073d03e-35ec-47a1-8d54-cb4ba9a1fb11",
+          "name": "marker-calibrate",
+          "parameters": {}
         }
       },
       "gltfModel": {
