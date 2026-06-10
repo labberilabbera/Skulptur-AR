@@ -8,18 +8,24 @@ kopierat från detta och med utbytta modeller/musik/markör.
 ## Arkitektur
 - **8th Wall-scen** (`src/.expanse.json`) med ett **ImageTarget** ("fram") +
   modeller som barn.
-- **Två modeller** (samma form):
-  - **Förkolnad** (`sculpture.glb`) — mörk kol-textur, world-anchor här.
-  - **Glöd** (`eld-textur.glb`) — glödtextur som baseColor, barn till förkolnade.
-- Bildmåls-tracking är instabil på böjd/glansig yta → markören placeras **bredvid**
-  på en platt utskrift, och `world-anchor` fryser innehållet i world space.
+- **Nuvarande Eld-setup:** en **flam-modell** (`flame.glb`, stiliserad eld från Tripo)
+  som **barn till ImageTarget** → 8th Walls native ImageTarget-tracking bär den.
+  `sculpture-fire` ligger på flam-modellen med `showModel:false` (modellens yta ÄR elden).
+  `marker-calibrate` ger admin-placering. **Ingen `world-anchor`** används längre här.
+- **Äldre/alternativ template:** två modeller (samma form) — **Förkolnad** (`sculpture.glb`,
+  world-anchor) + **Glöd** (`eld-textur.glb`, barn). Behålls för skulpturer där markören
+  sitter **bredvid** på en platt utskrift och innehållet måste frysas i world space
+  (böjd/glansig yta trackar dåligt direkt) — se `world-anchor` nedan.
 
 ## Egna komponenter (src/)
 - **`sculpture-fire`** (`sculpture-ar.ts` + `fire-shader.ts` + `particle-shader.ts`)
   Yt-eld (shader) + två partikellager (gnistor). Reglage: `enabled`, `showModel`,
-  `inflate`, `softness`, `feather`, `hue` (0–1 färg), `opacity`, `density`, `speed`,
-  `audioReact`, `p1*`/`p2*` (partiklar). Ljud-reaktiv "VU-bar" reser sig i
-  **världens** upp-riktning. Partiklar och VU-bar är world-up-baserade (ej lokal Y).
+  `inflate`, `softness`, `feather`, `opacity`, `density`, `speed`, `idleGlow`,
+  `audioReact`, `p1*`/`p2*` (partiklar). **Höjd-låst färggradient** via tre hue-reglage:
+  `hueBottom` (röd) → `hueMid` (orange) → `hueTop` (gul). Färgen sitter på absolut höjd
+  (world-Y), så den ljud-reaktiva "VU-baren" bara styr HUR HÖGT glöden tänds — inte hue:n
+  (röd botten förblir röd när baren reser sig). `idleGlow` = hur mycket gradienten lyser
+  utan ljud. VU-bar och partiklar är world-up-baserade (ej lokal Y).
   - **Flam-modell (stiliserad eld som EGEN modell):** lägg `sculpture-fire` på flam-
     modellen med `showModel:false` → modellens yta blir elden (skulpturen syns igenom).
     **Tung-vajning** animerar flamtopparna i vertex-shadern: `swayAmp` (andel av höjd,
@@ -29,8 +35,17 @@ kopierat från detta och med utbytta modeller/musik/markör.
 - **`ember-glow`** (`ember-glow.ts`) Lägg på glöd-modellen. Gör materialet additivt
   och animerar glöden (andning + flöde + ljud-puls). Växer utåt på musikens toppar
   (`expand`). Reglage: `enabled`, `speed`, `boost`, `audioReact`, `expand`.
-- **`world-anchor`** (`world-anchor.ts`) **MARKÖR-PRIMÄR tracking** (för markör på
-  podiets topplatta man tittar ner på). Två lägen:
+- **`marker-calibrate`** (`marker-calibrate.ts`) — **admin-/kalibreringsverktyg för
+  NATIV ImageTarget-tracking** (nuvarande Eld). Lägg på objektet som är **barn till
+  ImageTarget**. Gör INGEN egen tracking (ImageTarget bär objektet); ger
+  `window._anchorApi` (gizmo/flytta/rotera/skala) i admin-läge och tillämpar sparad
+  kalibrering på objektets **lokala** (markör-relativa) transform för besökare. Reglage:
+  `targetName` ("fram"), `framesToLock`, `relock`. **Sparformat identiskt med
+  `world-anchor`** → samma admin-UI (`index.html`) och samma KV-lagring.
+- **`world-anchor`** (`world-anchor.ts`) — **ALTERNATIV** till `marker-calibrate` (egen
+  **MARKÖR-PRIMÄR tracking**; används INTE av Eld längre men ligger kvar för world-space-
+  frysning där markören sitter bredvid). För markör på
+  podiets topplatta man tittar ner på. Två lägen:
   - **Besökare:** innehållet följer bildmålet KONTINUERLIGT, men posen **adaptivt
     dämpas** (one-euro-liknande: mest dämpning vid små jitter, följsam vid verklig
     rörelse) → stabilt utan att drifta. Markören är enda referensen; SLAM-drift spelar
@@ -106,8 +121,10 @@ data (här `eld-textur.glb`), eller exportera om triangulerat utan ngon. Det fin
    markör (8th Wall Targets, döp den `fram` så slipper du ändra sökvägar). Ta bort
    gamla/oanvända GLB:er ur `src/assets/` så de inte bundlas i onödan.
 3. Ändra `SCULPTURE_ID`, `SCULPTURE_NAME`, ev. `hue`/färger i `src/index.html`.
-4. Lägg komponenterna på modellerna (world-anchor + sculpture-fire på modellen som
-   exponerar vertexdata; ember-glow på glöd-modellen).
+4. Lägg komponenterna på modellen. **Flam-modell (som Eld):** `sculpture-fire`
+   (`showModel:false`) + `marker-calibrate` på flam-modellen, som är **barn till
+   ImageTarget**. **Två-modell-template:** `world-anchor` + `sculpture-fire` på modellen
+   som exponerar vertexdata; `ember-glow` på glöd-modellen.
 5. Vercel-projekt enligt **Nytt Vercel-projekt** ovan (Build Command/Output Directory +
    samma Upstash-env-variabler). Kalibrera via `?admin=KOD`.
 
