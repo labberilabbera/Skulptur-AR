@@ -98,36 +98,30 @@ export const fireFragmentShader = /* glsl */ `
     float heightFade = 1.0 - smoothstep(0.0, 1.2, vUv.y) * 0.5;
     fire *= heightFade;
 
-    // ── VU-bar logik ──────────────────────────────────────────────────────
-    // Audio-nivå styr hur högt upp på kroppen "baren" når.
-    // Mjuk kant så det inte ser ut som en skarp linje.
+    // ── Höjd-låst eldgradient (absolut höjd, vYNorm: 0 = botten, 1 = topp) ──
+    // Färgen sitter LÅST vid höjden, inte vid barens topp: röd nederst, orange
+    // i mitten, ljus orange/gul i toppen. Ljud-baren ändrar bara HUR HÖGT glöden
+    // tänds — aldrig hue:n. Därför förblir den röda botten röd när baren reser
+    // sig, mitten orange, toppen gul. (Redigera dessa tre färger för att tona om.)
+    vec3 cBottom = vec3(1.00, 0.06, 0.00);   // röd  (botten)
+    vec3 cMid    = vec3(1.00, 0.42, 0.04);   // orange (mitten)
+    vec3 cTop    = vec3(1.00, 0.78, 0.28);   // ljus orange/gul (toppen)
+    vec3 heightCol = mix(cBottom, cMid, smoothstep(0.0, 0.5, vYNorm));
+    heightCol      = mix(heightCol, cTop, smoothstep(0.5, 1.0, vYNorm));
+
+    // ── Ljud-bar: hur högt upp glöden tänds (mjuk kant, ingen skarp linje) ──
     float barHeight = uAudioLevel;
     float litFactor = smoothstep(barHeight + 0.12, barHeight - 0.04, vYNorm);
-    // litFactor = 1.0 under baren, 0.0 över baren, mjuk övergång
+    // litFactor = 1.0 under baren, 0.0 över baren
 
-    // Position inom baren (0 vid benen, 1 vid barens topp)
-    float posInBar = clamp(vYNorm / max(barHeight, 0.001), 0.0, 1.0);
+    // Tänd = full höjdfärg. Släckt = mörk vilo-ton i SAMMA hue (ingen vit).
+    vec3 litCol  = heightCol;
+    vec3 darkCol = heightCol * 0.12;
 
-    // ── Färg styrd av uColor: mörk i vila → full färg → vit-het på toppen ──
-    vec3 cBase = uColor * 0.18;                                  // mörk vilo-ton
-    vec3 cLit  = uColor;                                         // full färg
-    vec3 cHot  = mix(uColor, vec3(1.0, 0.95, 0.7), 0.75);       // het topp mot vit-gul
+    // idleGlow: hur mycket gradienten lyser UTAN ljud (0 = mörk, 1 = full glöd).
+    vec3 restCol = mix(darkCol, heightCol * 0.65, clamp(uIdleGlow, 0.0, 1.0));
 
-    vec3 barCol = mix(cBase, cLit, smoothstep(0.0, 0.55, posInBar));
-    barCol = mix(barCol, cHot, smoothstep(0.55, 1.0, posInBar));
-
-    // ── Viloläge ────────────────────────────────────────────────────────────
-    // idleGlow 0 = mörk vilo-ton (skulptur som "tänds" av musik).
-    // idleGlow 1 = full eld-gradient även i tystnad (för flam-modeller) —
-    // mörkare nedtill, het mot toppen (world-Y) så lågan alltid ser levande ut.
-    vec3 idleCol = mix(uColor * 0.55, cHot, smoothstep(0.25, 1.0, vYNorm));
-    vec3 restCol = mix(cBase, idleCol, clamp(uIdleGlow, 0.0, 1.0));
-
-    vec3 col = mix(restCol, barCol, litFactor);
-
-    // ── Overdrive: vid de högsta tonerna flammar HELA kroppen het ──────────
-    float overdrive = smoothstep(0.78, 1.0, uAudioLevel);
-    col = mix(col, cHot * 1.15, overdrive);
+    vec3 col = mix(restCol, litCol, litFactor);
 
     // ── Inre flamm-mjukhet (uSoftness) ─────────────────────────────────────
     // Breddar alfa-övergången i noise-texturen så de inre lågorna blir mjukare.
@@ -143,6 +137,6 @@ export const fireFragmentShader = /* glsl */ `
 
     float alpha = baseAlpha * edgeFade * density * uOpacity;
 
-    gl_FragColor = vec4(col * 1.25, alpha);
+    gl_FragColor = vec4(col * 1.05, alpha);
   }
 `
